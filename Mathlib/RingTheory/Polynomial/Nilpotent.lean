@@ -205,6 +205,13 @@ lemma isUnit_aeval_of_isUnit_aeval_of_isNilpotent_sub
   refine IsNilpotent.isUnit_add_left_of_commute ?_ hb (Commute.all _ _)
   exact isNilpotent_aeval_sub_of_isNilpotent_sub P hab
 
+instance (R : Type) [CommRing R] [IsReduced R] :
+    IsReduced (Polynomial R) := by
+  constructor
+  intro f hf
+  rw [Polynomial.isNilpotent_iff] at hf
+  exact ext_iff.mpr fun n => isNilpotent_iff_eq_zero.mp (hf n)
+
 end CommAlgebra
 
 end Polynomial
