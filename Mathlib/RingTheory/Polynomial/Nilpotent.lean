@@ -206,13 +206,12 @@ lemma isUnit_aeval_of_isUnit_aeval_of_isNilpotent_sub
   exact isNilpotent_aeval_sub_of_isNilpotent_sub P hab
 
 instance (R : Type) [Semiring R] [IsReduced R] :
-    IsReduced (R[X]) := by
+    IsReduced R[X] := by
   constructor
   intro f ⟨n, hn⟩
   rw [ext_iff] at hn
   exact Polynomial.leadingCoeff_eq_zero.mp <| IsReduced.pow_eq_zero
     (hn (n * f.natDegree) ▸ (coeff_pow_mul_natDegree _ n).symm)
-
 
 end CommAlgebra
 
