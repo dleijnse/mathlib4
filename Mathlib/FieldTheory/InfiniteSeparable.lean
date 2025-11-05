@@ -14,11 +14,10 @@ lemma AlgebraicExtensionEmptyTranscendenceBasis (k K : Type) [Field k] [Field K]
   obtain ⟨ι, y, hy⟩ := exists_isTranscendenceBasis' k K
   have hιEmpty := (IsTranscendenceBasis.isEmpty_iff_isAlgebraic hy).mpr
     Algebra.IsIntegral.isAlgebraic
-  have fι := (Equiv.equivEmpty ι).symm
-  have hcomp : Empty.elim = y ∘ ⇑fι := by
+  have hcomp : Empty.elim = y ∘ ⇑(Equiv.equivEmpty ι).symm := by
     ext x
     tauto
-  exact hcomp ▸ @IsTranscendenceBasis.comp_equiv Empty ι k K _ _ _ fι y hy
+  exact hcomp ▸ @IsTranscendenceBasis.comp_equiv Empty ι k K _ _ _ (Equiv.equivEmpty ι).symm y hy
 
 lemma Separable_imp_separablyGeneratedByEmpty (k K : Type) [Field k] [Field K] [Algebra k K]
     [Algebra.IsSeparable k K] : separablyGeneratedBy k K (@Empty.elim K) := by
@@ -41,27 +40,27 @@ example (R S T : Type) [CommRing R] [CommRing S] [CommRing T] [Algebra R S] [Alg
 
 example (R S T : Type) [CommRing R] [CommRing S] [CommRing T] [Algebra R S] [Algebra R T]
     (f : S ≃ₐ[R] T) (h : Algebra.EssFiniteType R S) : Algebra.EssFiniteType R T := by
-  /-obtain ⟨s, hs⟩ := h
-  use (Finset.map f s)
-  let fs : (Algebra.adjoin R s.toSet) ≃ₐ[R] (Algebra.adjoin R (⇑f '' ↑s)) :=
-    adjoin_equiv R S T f (s.toSet)-/
   rw [Algebra.essFiniteType_iff] at *
   obtain ⟨X, hX⟩ := h
   use X.map f
   intro u
   obtain ⟨s, hs⟩ := hX (f.symm.toAlgHom u)
   use f s
+  have h_coercion : (X.map f).toSet = ((f : S →ₐ[R] T)) '' X := by
+      simp only [Finset.coe_map, Equiv.coe_toEmbedding, EquivLike.coe_coe, AlgHom.coe_coe]
   refine ⟨?_, ?_, ?_⟩
-  ·
-    -- rw [Algebra.adjoin_image _ f.toAlgHom X]
-    -- rw [Algebra.adjoin_image, Subalgebra.mem_map]
-
-    sorry
-
+  · rw [h_coercion, Algebra.adjoin_image, Subalgebra.mem_map]
+    use s
+    exact ⟨hs.1, by rfl⟩
   · rw [MulEquiv.isUnit_map]
     exact hs.right.left
-  ·
-    sorry
+  · have hu : u = f (f.symm u) := by
+      rw [AlgEquiv.apply_symm_apply]
+    rw [h_coercion, Algebra.adjoin_image, hu]
+    simp only [AlgEquiv.apply_symm_apply, Subalgebra.mem_map, AlgHom.coe_coe]
+    use f.symm u * s
+    refine ⟨hs.2.2, ?_⟩
+    simp only [map_mul, AlgEquiv.apply_symm_apply]
 
 example (R S T : Type) [CommRing R] [CommRing S] [CommRing T] [Algebra R S] [Algebra R T]
     (f : S ≃ₐ[R] T) (M : Submonoid R) (h : IsLocalization M S) :
@@ -79,6 +78,7 @@ lemma IntermediateOfInfiniteSeparable_InfiniteSeparable {k K : Type} [Field k] [
 
     sorry
   have h' := h (K'.lift L) hFin'
-
+  obtain ⟨ι, x, hx⟩ := h'
+  use ι
 
   sorry
