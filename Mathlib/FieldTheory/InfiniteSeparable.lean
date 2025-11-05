@@ -26,7 +26,7 @@ lemma Separable_imp_separablyGeneratedByEmpty (k K : Type) [Field k] [Field K] [
 
 def InfiniteSeparable (k K : Type) [Field k] [Field K] [Algebra k K] :=
   ∀ K' : IntermediateField k K, Algebra.EssFiniteType k K' →
-    ∃ ι : Type, ∃ x : ι → K, separablyGeneratedBy K' K x
+    ∃ ι : Type, ∃ x : ι → K', separablyGeneratedBy k K' x
 
 def adjoin_equiv (R S T : Type) [CommRing R] [CommRing S] [CommRing T] [Algebra R S] [Algebra R T]
     (f : S ≃ₐ[R] T) (X : Set S) : Algebra.adjoin R X ≃ₐ[R] Algebra.adjoin R (f '' X) :=
@@ -72,13 +72,14 @@ lemma IntermediateOfInfiniteSeparable_InfiniteSeparable {k K : Type} [Field k] [
     [Algebra k K] (K' : IntermediateField k K) (h : InfiniteSeparable k K) :
     InfiniteSeparable k K' := by
   intro L hFin
-  let hEquiv : L ≃ₐ[k] (IntermediateField.lift L) := IntermediateField.liftAlgEquiv L
+  let f : L ≃ₐ[k] (IntermediateField.lift L) := IntermediateField.liftAlgEquiv L
   have hFin' : Algebra.EssFiniteType k (IntermediateField.lift L) := by
-
-
     sorry
   have h' := h (K'.lift L) hFin'
   obtain ⟨ι, x, hx⟩ := h'
   use ι
+  -- use f ∘ x
+  /- let x' : ι → L := fun i => ⟨ (x i).1, by sorry⟩
+  use x' -/
 
   sorry
