@@ -71,4 +71,70 @@ theorem IsGeometricallyReduced.of_forall_fg
   simp_rw [isGeometricallyReduced_iff] at h
   exact ⟨IsReduced.tensorProduct_of_flat_of_forall_fg h⟩
 
+example (A B : Type) [CommRing A] [CommRing B] [Algebra A B] : A →+* B := by exact
+  RingHom.smulOneHom
+
+example (k A B R : Type) [Field k] [CommRing R] [CommRing A] [CommRing B] (S : Submonoid A)
+    [Algebra A B] [Algebra k A] [Algebra k B] [IsScalarTower k A B] [IsLocalization S B]
+    [Algebra k R] :
+    haveI : Algebra (R ⊗[k] A) (R ⊗[k] B)
+      := RingHom.toAlgebra (TensorProduct.map (AlgHom.id k R) (algHom k A B)).toRingHom
+    IsLocalization (S.map (TensorProduct.includeRight : A →ₐ[k] R ⊗[k] A)) (R ⊗[k] B) := by
+  haveI : Algebra A (R ⊗[k] A) := RingHom.toAlgebra (TensorProduct.includeRight : A →ₐ[k] R ⊗[k] A)
+  haveI : Algebra B (R ⊗[k] B) := RingHom.toAlgebra (TensorProduct.includeRight : B →ₐ[k] R ⊗[k] B)
+  haveI : Algebra A (R ⊗[k] B) := RingHom.toAlgebra ((TensorProduct.includeRight : B →ₐ[k] R ⊗[k] B).toRingHom.comp (RingHom.smulOneHom : A →+* B))
+  haveI : Algebra (R ⊗[k] A) (R ⊗[k] B)
+      := RingHom.toAlgebra (TensorProduct.map (AlgHom.id k R) (algHom k A B)).toRingHom
+  haveI : IsScalarTower A B (R ⊗[k] B) := by sorry
+  haveI : IsScalarTower A (R ⊗[k] A) (R ⊗[k] B) := by sorry
+  have hLoc : IsLocalization (algebraMapSubmonoid (R ⊗[k] A) S) (R ⊗[k] B) := by
+    rw [isLocalization_iff_isPushout S B]
+    rw [isPushout_iff]
+
+    sorry
+
+  sorry
+end Algebra
+
+namespace Algebra
+
+variable (k A B R : Type) [Field k] [CommRing R] [CommRing A] [CommRing B] (S : Submonoid A)
+    [Algebra A B] [Algebra k A] [Algebra k B] [IsScalarTower k A B] [IsLocalization S B]
+    [Algebra k R]
+
+instance test : Algebra (R ⊗[k] A) (R ⊗[k] B)
+  := RingHom.toAlgebra (TensorProduct.map (AlgHom.id k R) (algHom k A B)).toRingHom
+instance test2 : Algebra A (R ⊗[k] A)
+  := RingHom.toAlgebra (TensorProduct.includeRight : A →ₐ[k] R ⊗[k] A)
+instance test3 : Algebra B (R ⊗[k] B)
+  := RingHom.toAlgebra (TensorProduct.includeRight : B →ₐ[k] R ⊗[k] B)
+instance test4 : Algebra A (R ⊗[k] B)
+  := RingHom.toAlgebra ((TensorProduct.includeRight : B →ₐ[k] R ⊗[k] B).toRingHom.comp
+    (RingHom.smulOneHom : A →+* B))
+instance test5 : IsScalarTower A B (R ⊗[k] B) := by
+  apply IsScalarTower.of_algebraMap_eq'
+
+  sorry
+instance test6 : IsScalarTower A (R ⊗[k] A) (R ⊗[k] B) := by
+  apply IsScalarTower.of_algebraMap_eq'
+  sorry
+instance test7 : Algebra B ((R ⊗[k] A) ⊗[A] B) := by sorry
+instance test8 : IsScalarTower A B (R ⊗[k] A ⊗[A] B) := by sorry
+-- instance test9 : Algebra (R ⊗[k] A) ((R ⊗[k] A) ⊗[A] B) := by sorry
+-- instance test10 : IsScalarTower A (R ⊗[k] A) (R ⊗[k] A ⊗[A] B) := by sorry
+
+example : IsLocalization (algebraMapSubmonoid (R ⊗[k] A) S) (R ⊗[k] B) := by
+  rw [isLocalization_iff_isPushout S B]
+  have f : R ⊗[k] B ≃ₐ[B] (R ⊗[k] A) ⊗[A] B := by sorry
+  have hPushout : IsPushout A (R ⊗[k] A) B ((R ⊗[k] A) ⊗[A] B) := by
+    -- @TensorProduct.isPushout A (R ⊗[k] A) B _ _ _ _ _
+    exact @TensorProduct.isPushout A (R ⊗[k] A) B _ _ _ _ _
+    sorry
+  have hPushout' : IsPushout A B (R ⊗[k] A) ((R ⊗[k] A) ⊗[A] B) := sorry
+  rw [IsPushout.comm]
+  apply (IsPushout.of_equiv f.symm)
+
+  sorry
+
+
 end Algebra
