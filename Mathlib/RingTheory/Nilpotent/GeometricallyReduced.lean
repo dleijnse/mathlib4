@@ -8,6 +8,7 @@ import Mathlib.RingTheory.Flat.Basic
 
 import Mathlib.RingTheory.LocalProperties.Reduced
 import Mathlib.RingTheory.KrullDimension.Zero
+import Mathlib.Algebra.Algebra.Pi
 
 /-!
 # Geometrically reduced algebras
@@ -201,6 +202,13 @@ def map_to_field_from_minimal_prime (R S : Type) [CommRing R] [CommRing S] [Alge
     (p : Ideal R) (hp : p ∈ minimalPrimes R) [IsLocalization.AtPrime S p (hp := hp.1.1)] : R →+* S
   := RingHom.smulOneHom
 
+
+lemma map_to_field_from_minimal_prime_kernel (R S : Type) [CommRing R] [CommRing S] [Algebra R S]
+    (p : Ideal R) (hp : p ∈ minimalPrimes R) [IsLocalization.AtPrime S p (hp := hp.1.1)] :
+    RingHom.ker (map_to_field_from_minimal_prime R S p hp) = p := by
+
+  sorry
+
 example (R S : Type) [CommRing R] [CommRing S] [Algebra R S] (p : Ideal R) [IsReduced R] [p.IsPrime]
     (hp : p ∈ minimalPrimes R) [IsLocalization.AtPrime S p] : IsField S := by
   have := Ring.KrullDimLE.of_isLocalization p hp S
@@ -212,4 +220,23 @@ example (R S : Type) [CommRing R] [CommRing S] [Algebra R S] (p : Ideal R) [IsRe
   apply (Ring.KrullDimLE.isField_of_isReduced (R := S))
 
 -- Needed for Stacks 00EW
-def canonical_field_product_embedding (R : Type) [Ring R] : sorry := sorry
+def canonical_field_product_embedding (k R : Type) [CommRing R] (S : minimalPrimes R → Type)
+    [Field k] [Algebra k R] [∀ p : minimalPrimes R, CommRing (S p)]
+    [∀ p : minimalPrimes R, Algebra R (S p)] -- [∀ p : minimalPrimes R, Algebra k (S p)]
+    -- [∀ p : minimalPrimes R, IsScalarTower k R (S p)]
+    [∀ p : minimalPrimes R, IsLocalization.AtPrime (S p) p.1 (hp := p.2.1.1)]
+    : R →+* Π p : minimalPrimes R, (S p) :=
+  Pi.ringHom (fun p => map_to_field_from_minimal_prime R (S p) p p.2)
+
+lemma canonical_field_product_embedding_kernel (k R : Type) [CommRing R] (S : minimalPrimes R → Type)
+    [Field k] [Algebra k R] [∀ p : minimalPrimes R, CommRing (S p)]
+    [∀ p : minimalPrimes R, Algebra R (S p)] -- [∀ p : minimalPrimes R, Algebra k (S p)]
+    -- [∀ p : minimalPrimes R, IsScalarTower k R (S p)]
+    [∀ p : minimalPrimes R, IsLocalization.AtPrime (S p) p.1 (hp := p.2.1.1)] :
+    RingHom.ker (canonical_field_product_embedding k R S) = Π p : minimalPrimes R, p.1 := by
+
+  -- Use map_to_field_from_minimal_prime_kernel
+  sorry
+
+example (R : Type) [CommRing R] (ι : Type) (S : ι → Type) [∀ i : ι, CommRing (S i)]
+    (f : (i : ι) → R →+* (S i)) : R →+* Π i, S i := Pi.ringHom f
