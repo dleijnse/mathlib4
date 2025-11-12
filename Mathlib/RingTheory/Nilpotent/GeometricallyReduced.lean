@@ -6,6 +6,8 @@ Authors: Dion Leijnse
 import Mathlib.FieldTheory.IsAlgClosed.AlgebraicClosure
 import Mathlib.RingTheory.Flat.Basic
 
+import Mathlib.RingTheory.LocalProperties.Reduced
+
 /-!
 # Geometrically reduced algebras
 
@@ -72,3 +74,34 @@ theorem IsGeometricallyReduced.of_forall_fg
   exact ⟨IsReduced.tensorProduct_of_flat_of_forall_fg h⟩
 
 end Algebra
+
+theorem IsGeometricallyReduced.of_localization {k A B : Type} [CommRing B] [CommRing A]
+    [h : Algebra A B] [Field k] [Algebra k A] [Algebra k B] [IsScalarTower k A B] {M : Submonoid A}
+    [Algebra.IsGeometricallyReduced k A] [IsLocalization M B] :
+    Algebra.IsGeometricallyReduced k B := by
+  have : Algebra (AlgebraicClosure k ⊗[k] A) (AlgebraicClosure k ⊗[k] B) :=
+    RingHom.toAlgebra (Algebra.TensorProduct.map
+      (AlgHom.id k (AlgebraicClosure k)) (Algebra.algHom k A B))
+  let M' : Submonoid (AlgebraicClosure k ⊗[k] A) :=
+    M.map Algebra.TensorProduct.includeRight.toRingHom.toMonoidHom
+  have hLoc : IsLocalization M' (AlgebraicClosure k ⊗[k] B) := by
+    sorry
+  rw [Algebra.isGeometricallyReduced_iff]
+  apply isReduced_localizationPreserves M' (AlgebraicClosure k ⊗[k] B)
+  infer_instance
+
+
+
+example (k A B : Type) [CommRing A] [CommRing B] [CommRing k] [Algebra k A] [Algebra k B]
+    (M : Submonoid B) : Submonoid (A ⊗[k] B)
+  := Submonoid.map Algebra.TensorProduct.includeRight.toRingHom.toMonoidHom M
+
+example (k A B R : Type) [CommRing A] [CommRing B] [CommRing k] [CommRing R] [Algebra k A]
+    [Algebra k B] [Algebra A B] [IsScalarTower k A B] (M : Submonoid A) [IsLocalization M B]
+    [Algebra k R] :
+    haveI : Algebra (R ⊗[k] A) (R ⊗[k] B) := RingHom.toAlgebra (Algebra.TensorProduct.map
+      (AlgHom.id k R) (Algebra.algHom k A B))
+    IsLocalization (M.map Algebra.TensorProduct.includeRight.toRingHom.toMonoidHom : Submonoid (R ⊗[k] A)) (R ⊗[k] B)
+  := by
+
+  sorry
