@@ -7,6 +7,7 @@ import Mathlib.FieldTheory.IsAlgClosed.AlgebraicClosure
 import Mathlib.RingTheory.Flat.Basic
 
 import Mathlib.RingTheory.LocalProperties.Reduced
+import Mathlib.RingTheory.KrullDimension.Zero
 
 /-!
 # Geometrically reduced algebras
@@ -73,8 +74,61 @@ theorem IsGeometricallyReduced.of_forall_fg
   simp_rw [isGeometricallyReduced_iff] at h
   exact ⟨IsReduced.tensorProduct_of_flat_of_forall_fg h⟩
 
-example (A B : Type) [CommRing A] [CommRing B] [Algebra A B] : A →+* B := by exact
-  RingHom.smulOneHom
+
+theorem IsGeometricallyReduced.of_localization2 {k A B : Type} [CommRing B] [CommRing A]
+    [h : Algebra A B] [Field k] [Algebra k A] [Algebra k B] [IsScalarTower k A B] {M : Submonoid A}
+    [Algebra.IsGeometricallyReduced k A] [IsLocalization M B] :
+    Algebra.IsGeometricallyReduced k B := by
+  have : Algebra (AlgebraicClosure k ⊗[k] A) (AlgebraicClosure k ⊗[k] B) :=
+    RingHom.toAlgebra (Algebra.TensorProduct.map
+      (AlgHom.id k (AlgebraicClosure k)) (Algebra.algHom k A B))
+  let M' : Submonoid (AlgebraicClosure k ⊗[k] A) :=
+    M.map Algebra.TensorProduct.includeRight.toRingHom.toMonoidHom
+  have hLoc : IsLocalization M' (AlgebraicClosure k ⊗[k] B) := by
+    sorry
+  rw [Algebra.isGeometricallyReduced_iff]
+  apply isReduced_localizationPreserves M' (AlgebraicClosure k ⊗[k] B)
+  infer_instance
+
+theorem IsGeometricallyReduced.of_localization {k A B : Type} [CommRing B] [CommRing A]
+    [h : Algebra A B] [Field k] [Algebra k A] [Algebra k B] [IsScalarTower k A B] {M : Submonoid A}
+    [Algebra.IsGeometricallyReduced k A] [IsLocalization M B] :
+    Algebra.IsGeometricallyReduced k B := by
+  have : Algebra (AlgebraicClosure k ⊗[k] A) (AlgebraicClosure k ⊗[k] B) :=
+    RingHom.toAlgebra (Algebra.TensorProduct.map
+      (AlgHom.id k (AlgebraicClosure k)) (Algebra.algHom k A B))
+  have : Algebra A (AlgebraicClosure k ⊗[k] A) :=
+    RingHom.toAlgebra (TensorProduct.includeRight : A →ₐ[k] AlgebraicClosure k ⊗[k] A)
+  have : Algebra A (AlgebraicClosure k ⊗[k] B) := RingHom.toAlgebra
+    ((TensorProduct.includeRight : B →ₐ[k] AlgebraicClosure k ⊗[k] B).toRingHom.comp
+    (RingHom.smulOneHom : A →+* B))
+  have : Algebra B (AlgebraicClosure k ⊗[k] B) :=
+    RingHom.toAlgebra (TensorProduct.includeRight : B →ₐ[k] AlgebraicClosure k ⊗[k] B)
+  have : IsScalarTower A (AlgebraicClosure k ⊗[k] A) (AlgebraicClosure k ⊗[k] B) := by
+    sorry
+  have : IsScalarTower A B (AlgebraicClosure k ⊗[k] B) := by sorry
+
+  have hLoc' : IsLocalization (algebraMapSubmonoid (AlgebraicClosure k ⊗[k] A) M)
+      (AlgebraicClosure k ⊗[k] B) := by
+    rw [isLocalization_iff_isPushout M B]
+    -- Current goal:
+    --   ⊢ IsPushout A (AlgebraicClosure k ⊗[k] A) B (AlgebraicClosure k ⊗[k] B)
+    sorry
+  rw [Algebra.isGeometricallyReduced_iff]
+  apply isReduced_localizationPreserves (algebraMapSubmonoid (AlgebraicClosure k ⊗[k] A) M)
+      (AlgebraicClosure k ⊗[k] B)
+  infer_instance
+
+example (k A B R : Type) [CommRing A] [CommRing B] [CommRing k] [CommRing R] [Algebra k A]
+    [Algebra k B] [Algebra A B] [IsScalarTower k A B] (M : Submonoid A) [IsLocalization M B]
+    [Algebra k R] :
+    haveI : Algebra (R ⊗[k] A) (R ⊗[k] B) := RingHom.toAlgebra (Algebra.TensorProduct.map
+      (AlgHom.id k R) (Algebra.algHom k A B))
+    IsLocalization (M.map Algebra.TensorProduct.includeRight.toRingHom.toMonoidHom :
+      Submonoid (R ⊗[k] A)) (R ⊗[k] B)
+  := by
+
+  sorry
 
 example (k A B R : Type) [Field k] [CommRing R] [CommRing A] [CommRing B] (S : Submonoid A)
     [Algebra A B] [Algebra k A] [Algebra k B] [IsScalarTower k A B] [IsLocalization S B]
@@ -130,7 +184,7 @@ example : IsLocalization (algebraMapSubmonoid (R ⊗[k] A) S) (R ⊗[k] B) := by
   have f : R ⊗[k] B ≃ₐ[B] (R ⊗[k] A) ⊗[A] B := by sorry
   have hPushout : IsPushout A (R ⊗[k] A) B ((R ⊗[k] A) ⊗[A] B) := by
     -- @TensorProduct.isPushout A (R ⊗[k] A) B _ _ _ _ _
-    exact @TensorProduct.isPushout A (R ⊗[k] A) B _ _ _ _ _
+    -- exact @TensorProduct.isPushout A (R ⊗[k] A) B _ _ _ _ _
     sorry
   have hPushout' : IsPushout A B (R ⊗[k] A) ((R ⊗[k] A) ⊗[A] B) := sorry
   rw [IsPushout.comm]
@@ -141,33 +195,21 @@ example : IsLocalization (algebraMapSubmonoid (R ⊗[k] A) S) (R ⊗[k] B) := by
 
 end Algebra
 
-theorem IsGeometricallyReduced.of_localization {k A B : Type} [CommRing B] [CommRing A]
-    [h : Algebra A B] [Field k] [Algebra k A] [Algebra k B] [IsScalarTower k A B] {M : Submonoid A}
-    [Algebra.IsGeometricallyReduced k A] [IsLocalization M B] :
-    Algebra.IsGeometricallyReduced k B := by
-  have : Algebra (AlgebraicClosure k ⊗[k] A) (AlgebraicClosure k ⊗[k] B) :=
-    RingHom.toAlgebra (Algebra.TensorProduct.map
-      (AlgHom.id k (AlgebraicClosure k)) (Algebra.algHom k A B))
-  let M' : Submonoid (AlgebraicClosure k ⊗[k] A) :=
-    M.map Algebra.TensorProduct.includeRight.toRingHom.toMonoidHom
-  have hLoc : IsLocalization M' (AlgebraicClosure k ⊗[k] B) := by
-    sorry
-  rw [Algebra.isGeometricallyReduced_iff]
-  apply isReduced_localizationPreserves M' (AlgebraicClosure k ⊗[k] B)
-  infer_instance
 
 
+def map_to_field_from_minimal_prime (R S : Type) [CommRing R] [CommRing S] [Algebra R S]
+    (p : Ideal R) (hp : p ∈ minimalPrimes R) [IsLocalization.AtPrime S p (hp := hp.1.1)] : R →+* S
+  := RingHom.smulOneHom
 
-example (k A B : Type) [CommRing A] [CommRing B] [CommRing k] [Algebra k A] [Algebra k B]
-    (M : Submonoid B) : Submonoid (A ⊗[k] B)
-  := Submonoid.map Algebra.TensorProduct.includeRight.toRingHom.toMonoidHom M
+example (R S : Type) [CommRing R] [CommRing S] [Algebra R S] (p : Ideal R) [IsReduced R] [p.IsPrime]
+    (hp : p ∈ minimalPrimes R) [IsLocalization.AtPrime S p] : IsField S := by
+  have := Ring.KrullDimLE.of_isLocalization p hp S
+  unfold IsLocalization.AtPrime at *
+  have : IsReduced S := by
+    apply (isReduced_localizationPreserves p.primeCompl S)
+    infer_instance
+  have : IsLocalRing S := IsLocalization.AtPrime.isLocalRing S p
+  apply (Ring.KrullDimLE.isField_of_isReduced (R := S))
 
-example (k A B R : Type) [CommRing A] [CommRing B] [CommRing k] [CommRing R] [Algebra k A]
-    [Algebra k B] [Algebra A B] [IsScalarTower k A B] (M : Submonoid A) [IsLocalization M B]
-    [Algebra k R] :
-    haveI : Algebra (R ⊗[k] A) (R ⊗[k] B) := RingHom.toAlgebra (Algebra.TensorProduct.map
-      (AlgHom.id k R) (Algebra.algHom k A B))
-    IsLocalization (M.map Algebra.TensorProduct.includeRight.toRingHom.toMonoidHom : Submonoid (R ⊗[k] A)) (R ⊗[k] B)
-  := by
-
-  sorry
+-- Needed for Stacks 00EW
+def canonical_field_product_embedding (R : Type) [Ring R] : sorry := sorry
