@@ -83,3 +83,47 @@ lemma IntermediateOfInfiniteSeparable_InfiniteSeparable {k K : Type} [Field k] [
   use x' -/
 
   sorry
+
+noncomputable section
+
+lemma EssFiniteType_fieldExtension_is_quotient_field (k K : Type) [Field k] [Field K] [Algebra k K]
+    [h : Algebra.EssFiniteType k K]
+    : ∃ S : Finset K, IsFractionRing (Algebra.adjoin k S.toSet) K := by
+  obtain ⟨S, hS⟩ := h.cond
+  use S
+  unfold IsFractionRing
+  have h2 : Submonoid.comap (algebraMap (Algebra.adjoin k S.toSet) K) (IsUnit.submonoid K) =
+      nonZeroDivisors (Algebra.adjoin k S.toSet) := by
+    ext x
+    simp only [Submonoid.mem_comap, IsUnit.mem_submonoid_iff, Subalgebra.algebraMap_apply,
+      isUnit_iff_ne_zero, ne_eq, ZeroMemClass.coe_eq_zero, mem_nonZeroDivisors_iff_ne_zero]
+  rw [← h2]
+  exact hS
+
+open Algebra Module
+open scoped nonZeroDivisors
+
+
+lemma EssFiniteType_and_algebraic_imp_finite (k K : Type) [Field k] [Field K] [Algebra k K]
+    [h : Algebra.EssFiniteType k K] [Algebra.IsAlgebraic k K] : Module.Finite k K := by
+  obtain ⟨S, hS⟩ := EssFiniteType_fieldExtension_is_quotient_field k K
+
+  have : Algebra (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) := sorry
+  have hFin : FiniteDimensional (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) :=
+    instFiniteDimensionalFractionRingOfFinite
+
+  sorry
+
+
+lemma deg_of_separable_closure_of_FG_finite (k K : Type) [Field k] [Field K] [Algebra k K]
+    [Algebra.EssFiniteType k K] (n : ℕ) (x : Fin n → K) (h : IsTranscendenceBasis k x) :
+    Module.Finite (IntermediateField.adjoin k (Set.range x)) K := by
+
+  sorry
+
+example (R S : Type) [CommRing R] [CommRing S] [Algebra R S] [IsFractionRing R S] :
+    S ≃ₐ[R] FractionRing R := (FractionRing.algEquiv R S).symm
+
+-- example (R S : Type) [CommRing R] [CommRing S] [Algebra R S] [IsDomain R] [IsDomain S]
+
+-- possibly useful: Algebra.IsAlgebraic.rank_fractionRing_polynomial
