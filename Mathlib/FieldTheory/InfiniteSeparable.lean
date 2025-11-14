@@ -109,8 +109,8 @@ lemma EssFiniteType_and_algebraic_imp_finite (k K : Type) [Field k] [Field K] [A
   obtain ⟨S, hS⟩ := EssFiniteType_fieldExtension_is_quotient_field k K
 
   have : Algebra (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) := sorry
-  have hFin : FiniteDimensional (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) :=
-    instFiniteDimensionalFractionRingOfFinite
+  -- have hFin : FiniteDimensional (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) :=
+  --  instFiniteDimensionalFractionRingOfFinite
 
   sorry
 
@@ -127,3 +127,8 @@ example (R S : Type) [CommRing R] [CommRing S] [Algebra R S] [IsFractionRing R S
 -- example (R S : Type) [CommRing R] [CommRing S] [Algebra R S] [IsDomain R] [IsDomain S]
 
 -- possibly useful: Algebra.IsAlgebraic.rank_fractionRing_polynomial
+
+theorem extension_decomposition_purelyInseparable_separablyGenerated (k K : Type) [Field k]
+    [Field K] [Algebra K] [Algebra.EssFiniteType k K] :
+    ∃ k' : Type, ∃ K' : Type, (haveI _ : Field k') := by
+  sorry
