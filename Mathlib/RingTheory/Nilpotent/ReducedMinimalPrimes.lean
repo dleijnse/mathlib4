@@ -75,3 +75,10 @@ lemma separable_tensor_reduced (k k' L : Type) [Field k] [Field k'] [Field L] [A
     (Algebra.FormallyEtale.iff_formallyUnramified_and_formallySmooth.mp hEtale2).left
   have hEssFinType : EssFiniteType L (L ⊗[k] k'):= Algebra.EssFiniteType.baseChange k k' L
   apply (Algebra.FormallyUnramified.isReduced_of_field L)
+
+lemma purely_transcendental_tensor_reduced (k k' R : Type) [Field k] [Field k'] [Algebra k k']
+    [CommRing R] [Algebra k R] (ι : Type) (x : ι → k') (hBasis : IsTranscendenceBasis k x)
+    (hPurelyTranscendental : k' = Algebra.adjoin k (Set.range x)) [IsReduced R] :
+    IsReduced (k' ⊗[k] R) := by
+
+  sorry
