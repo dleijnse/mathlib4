@@ -86,7 +86,7 @@ lemma IntermediateOfInfiniteSeparable_InfiniteSeparable {k K : Type} [Field k] [
 
 noncomputable section
 
-lemma EssFiniteType_fieldExtension_is_quotient_field (k K : Type) [Field k] [Field K] [Algebra k K]
+lemma EssFiniteType_fieldExtension_is_fraction_ring (k K : Type) [Field k] [Field K] [Algebra k K]
     [h : Algebra.EssFiniteType k K]
     : ∃ S : Finset K, IsFractionRing (Algebra.adjoin k S.toSet) K := by
   obtain ⟨S, hS⟩ := h.cond
@@ -104,13 +104,45 @@ open Algebra Module
 open scoped nonZeroDivisors
 
 
+example (k K : Type) [CommRing k] [Field K] [Algebra k K] (h : IsFractionRing k K) :
+    K ≃ₐ[k] FractionRing k := by
+  exact (FractionRing.algEquiv k K).symm
+
+example (R S M : Type) [CommRing R] [CommRing S] [AddCommMonoid M] [Module S M] (f : R ≃+* S) :
+    Module R M := by sorry
+
+
+lemma module_finite_of_algebraic_and_FG (k K : Type) [Field k] [Field K] [Algebra k K]
+    [Algebra.IsAlgebraic k K] (S : Finset K) : Module.Finite k (Algebra.adjoin k S.toSet) := by
+  rw [← IsNoetherian.iff_fg]
+  exact isNoetherian_adjoin_finset S (fun x => fun _ => IsIntegral.isIntegral x)
+
 lemma EssFiniteType_and_algebraic_imp_finite (k K : Type) [Field k] [Field K] [Algebra k K]
     [h : Algebra.EssFiniteType k K] [Algebra.IsAlgebraic k K] : Module.Finite k K := by
-  obtain ⟨S, hS⟩ := EssFiniteType_fieldExtension_is_quotient_field k K
+  obtain ⟨S, hS⟩ := EssFiniteType_fieldExtension_is_fraction_ring k K
 
-  have : Algebra (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) := sorry
-  -- have hFin : FiniteDimensional (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) :=
-  --  instFiniteDimensionalFractionRingOfFinite
+  let kEquiv : FractionRing k ≃ₐ[k] k := (FractionRing.algEquiv k k)
+  let KEquiv : FractionRing (Algebra.adjoin k S.toSet) ≃ₐ[adjoin k S.toSet] K :=
+      (FractionRing.algEquiv (Algebra.adjoin k S.toSet) K)
+
+  have hFin1 : Module.Finite k (Algebra.adjoin k S.toSet) := module_finite_of_algebraic_and_FG k K S
+
+  let alg : Algebra (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) :=
+    FractionRing.liftAlgebra _ _
+  let mod : Module (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) := alg.toModule
+  let mod2 : Module (FractionRing k) K := by sorry
+  have hFin2 : FiniteDimensional (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) := by
+    exact instFiniteDimensionalFractionRingOfFinite k (Algebra.adjoin k S.toSet)
+  unfold FiniteDimensional at hFin2
+  refine (Module.Finite.of_equiv_equiv kEquiv.toRingEquiv KEquiv.toRingEquiv ?_)
+
+  apply IsFractionRing.ringHom_ext (A := k)
+  intro x
+  simp_all only [AlgEquiv.toRingEquiv_eq_coe, AlgEquiv.toRingEquiv_toRingHom, RingHom.coe_comp,
+    RingHom.coe_coe, Function.comp_apply, AlgEquiv.commutes, algebraMap_self, RingHom.id_apply, mod,
+    alg, kEquiv, KEquiv]
+  unfold FractionRing.algEquiv
+  unfold Localization.algEquiv
 
   sorry
 
@@ -118,6 +150,8 @@ lemma EssFiniteType_and_algebraic_imp_finite (k K : Type) [Field k] [Field K] [A
 lemma deg_of_separable_closure_of_FG_finite (k K : Type) [Field k] [Field K] [Algebra k K]
     [Algebra.EssFiniteType k K] (n : ℕ) (x : Fin n → K) (h : IsTranscendenceBasis k x) :
     Module.Finite (IntermediateField.adjoin k (Set.range x)) K := by
+  have hAlg : Algebra.IsAlgebraic (IntermediateField.adjoin k (Set.range x)) K :=
+    IsTranscendenceBasis.isAlgebraic_field h
 
   sorry
 
@@ -129,6 +163,25 @@ example (R S : Type) [CommRing R] [CommRing S] [Algebra R S] [IsFractionRing R S
 -- possibly useful: Algebra.IsAlgebraic.rank_fractionRing_polynomial
 
 theorem extension_decomposition_purelyInseparable_separablyGenerated (k K : Type) [Field k]
-    [Field K] [Algebra K] [Algebra.EssFiniteType k K] :
-    ∃ k' : Type, ∃ K' : Type, (haveI _ : Field k') := by
+    [Field K] [Algebra k K] [Algebra.EssFiniteType k K] :
+    ∃ k' : Type, ∃ K' : Type, ∃ sr : Field k', k' = k' := by
+
   sorry
+
+
+/-
+TODO: Formalize the following constructions:
+
+- construction of k' out of a polynomial P over k(x₁, ..., xᵣ) by adjoining the p-th roots of all
+  coefficients occuring in P
+- Construction of L out of k' and K by taking the compositum.
+- Inductively making K' and k' out of K and k.
+
+
+Elementary needed statements:
+- Obtain that [K : K_{sep}] is finite out of the fact that K/k is finitely generated.
+- Interplay between taking composita, adjoining elements and degrees of field extensions.
+- Interplay of IsCompositum and stacking squares together.
+
+
+-/
