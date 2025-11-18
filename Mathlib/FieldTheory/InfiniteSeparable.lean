@@ -185,3 +185,25 @@ Elementary needed statements:
 
 
 -/
+
+variable (k : Type) [Field k]
+variable (S : CategoryTheory.Square (CommAlgCat k))
+variable (K : Type) [Field K]
+variable (f : k →+* K) (h : RingHom.EssFiniteType f)
+instance : Algebra k K := f.toAlgebra
+
+
+def RingHom.IsPurelyInseparable' (R S : Type) [CommRing R] [CommRing S] (f : R →+* S) : Prop :=
+  @IsPurelyInseparable R S _ _ f.toAlgebra
+
+-- Not yet complete, but gives some hint of the direction to take
+def IsExtensionSquare (S : CategoryTheory.Square (CommAlgCat k)) : Prop :=
+  IsField S.X₁ ∧ IsField S.X₂ ∧ IsField S.X₃ ∧ IsField S.X₄ ∧
+  S.X₁ = k ∧ S.X₃ = K ∧ S.f₁₂.hom'.toRingHom.IsPurelyInseparable'
+
+-- Final goal:
+theorem exists_ExtensionSquare : ∃ Sq : CategoryTheory.Square (CommAlgCat k), IsExtensionSquare k K Sq := by sorry
+
+-- Then have some basic API theorems, such as horizontal and vertical compositions of extension
+-- squares are again an extension square. After that, build the functions needed to inductively
+-- build an extension square out of a morphism of Fields of Essentially Finite Type.
