@@ -186,24 +186,88 @@ Elementary needed statements:
 
 -/
 
+open Polynomial
+
+def Ksep (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K) :=
+  separableClosure (IntermediateField.adjoin k (Set.range x)) K
+
+def P_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K) (β : K) :
+    Polynomial (IntermediateField.adjoin k (Set.range x)) :=
+  minpoly (IntermediateField.adjoin k (Set.range x)) β
+
+def coefficients_of_element {k K : Type} [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
+    (y : K) (hy : y ∈ IntermediateField.adjoin k (Set.range x)) :
+    Finset k := by
+  classical
+  rw [IntermediateField.mem_adjoin_range_iff] at hy
+  let r := Classical.choose hy
+  let h2 := Classical.choose_spec hy
+  let s := Classical.choose h2
+  let hrs := Classical.choose_spec h2
+  exact r.coeffs ∪ s.coeffs
+
+open Classical in
+def coefficients_of_P (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type)
+    (x : ι → K) (P : Polynomial (IntermediateField.adjoin k (Set.range x))) : Finset K :=
+  Finset.biUnion (⊤ : Finset (Fin P.natDegree))
+    (fun i => coefficients_of_element x (P.coeff i) (by apply (P.coeff i).property; aesop))
+
+-- def k'_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K) (β : K)
+
+-- example (k : Type) [Field k] (p : ℕ) (hp : p.Prime) [CharP k p] (x : k) := AdjoinRoot (X ^ p - x)
+-- example (k : Type) : SplittingField
+
+
+
+open CategoryTheory
+
 variable (k : Type) [Field k]
-variable (S : CategoryTheory.Square (CommAlgCat k))
+variable (S : CategoryTheory.Square (CommRingCat))
 variable (K : Type) [Field K]
 variable (f : k →+* K) (h : RingHom.EssFiniteType f)
 instance : Algebra k K := f.toAlgebra
 
 
-def RingHom.IsPurelyInseparable' (R S : Type) [CommRing R] [CommRing S] (f : R →+* S) : Prop :=
+def RingHom.IsPurelyInseparable' {R S : Type} [CommRing R] [CommRing S] (f : R →+* S) : Prop :=
   @IsPurelyInseparable R S _ _ f.toAlgebra
 
+lemma purelyInseparable_comp {R S T : Type} [CommRing R] [CommRing S] [CommRing T] (f : R →+* S)
+    (g : S →+* T) (hf : f.IsPurelyInseparable') (hg : g.IsPurelyInseparable') :
+    (g.comp f).IsPurelyInseparable' := by
+
+  sorry
+
 -- Not yet complete, but gives some hint of the direction to take
-def IsExtensionSquare (S : CategoryTheory.Square (CommAlgCat k)) : Prop :=
+def IsExtensionSquare (S : CategoryTheory.Square (CommRingCat)) : Prop :=
   IsField S.X₁ ∧ IsField S.X₂ ∧ IsField S.X₃ ∧ IsField S.X₄ ∧
-  S.X₁ = k ∧ S.X₃ = K ∧ S.f₁₂.hom'.toRingHom.IsPurelyInseparable'
+  S.f₁₂.hom'.IsPurelyInseparable' ∧ S.f₁₃ = Arrow.mk (CommRingCat.ofHom f)
+
+lemma ExtensionSquare1 (hE : IsExtensionSquare k K f S) : S.X₁ = k := by
+  have hA := hE.2.2.2.2.2
+  rw [Arrow.mk_eq_mk_iff] at hA
+  obtain ⟨hX, _⟩ := hA
+  simp_all only
+
+lemma ExtensionSquare3 (hE : IsExtensionSquare k K f S) : S.X₃ = K := by
+  have hA := hE.2.2.2.2.2
+  rw [Arrow.mk_eq_mk_iff] at hA
+  obtain ⟨hX, hY, _⟩ := hA
+  simp_all only
 
 -- Final goal:
-theorem exists_ExtensionSquare : ∃ Sq : CategoryTheory.Square (CommAlgCat k), IsExtensionSquare k K Sq := by sorry
+theorem exists_ExtensionSquare : ∃ Sq : CategoryTheory.Square (CommRingCat),
+    IsExtensionSquare k K f Sq := by sorry
+
 
 -- Then have some basic API theorems, such as horizontal and vertical compositions of extension
 -- squares are again an extension square. After that, build the functions needed to inductively
 -- build an extension square out of a morphism of Fields of Essentially Finite Type.
+
+example (f : k →+* K) : k ⟶ K := SemiRingCat.ofHom f
+
+
+variable (C : Type) [Category C] {X Y : C} (f : X ⟶ Y)
+variable (Sq : Square C)
+variable (A B : Arrow C)
+
+example (h : A = B) : A.left = B.left := by exact congrArg Comma.left h
