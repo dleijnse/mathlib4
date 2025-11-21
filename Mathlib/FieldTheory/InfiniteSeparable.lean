@@ -5,6 +5,8 @@ Authors: Dion Leijnse
 -/
 
 import Mathlib
+import Mathlib.Algebra.Category.FieldCat
+
 
 def separablyGeneratedBy (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) :=
   IsTranscendenceBasis k x ∧ Algebra.IsSeparable (IntermediateField.adjoin k (Set.range x)) K
@@ -222,7 +224,7 @@ def coefficients_of_P (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type)
 open CategoryTheory
 
 variable (k : Type) [Field k]
-variable (S : CategoryTheory.Square (CommRingCat))
+variable (S : CategoryTheory.Square FieldCat)
 variable (K : Type) [Field K]
 variable (f : k →+* K) (h : RingHom.EssFiniteType f)
 instance : Algebra k K := f.toAlgebra
@@ -231,31 +233,61 @@ instance : Algebra k K := f.toAlgebra
 def RingHom.IsPurelyInseparable' {R S : Type} [CommRing R] [CommRing S] (f : R →+* S) : Prop :=
   @IsPurelyInseparable R S _ _ f.toAlgebra
 
-lemma purelyInseparable_comp {R S T : Type} [CommRing R] [CommRing S] [CommRing T] (f : R →+* S)
+lemma purelyInseparable_comp {R S T : Type} [Field R] [Field S] [Field T] (f : R →+* S)
     (g : S →+* T) (hf : f.IsPurelyInseparable') (hg : g.IsPurelyInseparable') :
     (g.comp f).IsPurelyInseparable' := by
+  unfold RingHom.IsPurelyInseparable' at *
+  let _ : Algebra R S := f.toAlgebra
+  let _ : Algebra S T := g.toAlgebra
+  let _ : Algebra R T := (g.comp f).toAlgebra
+  let _ : IsScalarTower R S T := IsScalarTower.of_algebraMap_eq' rfl
+  exact IsPurelyInseparable.trans R S T
 
-  sorry
+def RingHom.IsSeparablyGeneratedBy {k K : Type} [Field k] [Field K] (f : k →+* K) {ι : Type}
+    (x : ι → K) : Prop := @separablyGeneratedBy k K _ _ f.toAlgebra _ x
 
--- Not yet complete, but gives some hint of the direction to take
-def IsExtensionSquare (S : CategoryTheory.Square (CommRingCat)) : Prop :=
-  IsField S.X₁ ∧ IsField S.X₂ ∧ IsField S.X₃ ∧ IsField S.X₄ ∧
-  S.f₁₂.hom'.IsPurelyInseparable' ∧ S.f₁₃ = Arrow.mk (CommRingCat.ofHom f)
+-- Define a separably generated morphism of fields without making the transcendental basis explicit
+def RingHom.IsSeparablyGenerated {k K : Type} [Field k] [Field K] (f : k →+* K) : Prop :=
+  ∃ ι : Type, ∃ x : ι → K, f.IsSeparablyGeneratedBy x
 
-lemma ExtensionSquare1 (hE : IsExtensionSquare k K f S) : S.X₁ = k := by
-  have hA := hE.2.2.2.2.2
+-- Given a finitely generated field extension `K/k` and a transcendence basis `x : ι → K`, this
+-- gives the degree of `K` over the separable closure of `k(x)`.
+def Algebra.separableDegree_of_transcendenceBasis (k K : Type) [Field k] [Field K] [Algebra k K]
+    {ι : Type} (x : ι → K) [Algebra.EssFiniteType k K] : ℕ :=
+  Field.finInsepDegree (IntermediateField.adjoin k (Set.range x)) K
+
+def RingHom.separableDegree_of_transcendenceBasis {k K : Type} [Field k] [Field K] (f : k →+* K)
+    {ι : Type} (x : ι → K) (hf : f.EssFiniteType) : ℕ :=
+  @Algebra.separableDegree_of_transcendenceBasis k K _ _ f.toAlgebra _ x hf
+
+
+-- This is the type of square we seek
+def IsExtensionSquare (S : CategoryTheory.Square FieldCat) : Prop :=
+  S.f₁₂.hom'.IsPurelyInseparable' ∧ S.f₁₃ = Arrow.mk (FieldCat.ofHom f) ∧
+  @RingHom.IsSeparablyGenerated S.X₂ S.X₄ _ _ S.f₂₄.hom'
+
+
+lemma ExtensionSquareX₁ (hE : IsExtensionSquare k K f S) : S.X₁ = k := by
+  obtain ⟨_, hA, _⟩ := hE
   rw [Arrow.mk_eq_mk_iff] at hA
   obtain ⟨hX, _⟩ := hA
   simp_all only
 
-lemma ExtensionSquare3 (hE : IsExtensionSquare k K f S) : S.X₃ = K := by
-  have hA := hE.2.2.2.2.2
+lemma ExtensionSquareX₃ (hE : IsExtensionSquare k K f S) : S.X₃ = K := by
+  obtain ⟨_, hA, _⟩ := hE
   rw [Arrow.mk_eq_mk_iff] at hA
   obtain ⟨hX, hY, _⟩ := hA
   simp_all only
 
+
+/-
+lemma ExtensionSquare_right_of_purely_inseparable_isExtensionSquare {k K : Type} (f : k →+* K)
+    (Sl Sr : Square FieldCat) (hInsep : Sl.f₁₂.hom'.IsPurelyInseparable Sl.f₁₂)
+    (hExt : IsExtensionSquare _ _ _ _ Sr) : IsExtensionSquare CategoryTheory.CommSq.horiz_comp
+-/
+
 -- Final goal:
-theorem exists_ExtensionSquare : ∃ Sq : CategoryTheory.Square (CommRingCat),
+theorem exists_ExtensionSquare : ∃ Sq : CategoryTheory.Square FieldCat,
     IsExtensionSquare k K f Sq := by sorry
 
 
@@ -271,3 +303,10 @@ variable (Sq : Square C)
 variable (A B : Arrow C)
 
 example (h : A = B) : A.left = B.left := by exact congrArg Comma.left h
+
+variable (S1 S2 : Square FieldCat)
+variable (hGlue : Arrow.mk S1.f₂₄ = Arrow.mk S2.f₁₃)
+
+
+#check Square.mk
+-- #check CategoryTheory.CommSq.horiz_comp (Square.commSq S1) (Square.commSq S2)
