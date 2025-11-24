@@ -48,7 +48,7 @@ example (R S T : Type) [CommRing R] [CommRing S] [CommRing T] [Algebra R S] [Alg
   intro u
   obtain ⟨s, hs⟩ := hX (f.symm.toAlgHom u)
   use f s
-  have h_coercion : (X.map f).toSet = ((f : S →ₐ[R] T)) '' X := by
+  have h_coercion : SetLike.coe (X.map f) = ((f : S →ₐ[R] T)) '' X := by
       simp only [Finset.coe_map, Equiv.coe_toEmbedding, EquivLike.coe_coe, AlgHom.coe_coe]
   refine ⟨?_, ?_, ?_⟩
   · rw [h_coercion, Algebra.adjoin_image, Subalgebra.mem_map]
@@ -115,7 +115,8 @@ example (R S M : Type) [CommRing R] [CommRing S] [AddCommMonoid M] [Module S M] 
 
 
 lemma module_finite_of_algebraic_and_FG (k K : Type) [Field k] [Field K] [Algebra k K]
-    [Algebra.IsAlgebraic k K] (S : Finset K) : Module.Finite k (Algebra.adjoin k S.toSet) := by
+    [Algebra.IsAlgebraic k K] (S : Finset K) : Module.Finite k (Algebra.adjoin k <| SetLike.coe S)
+    := by
   rw [← IsNoetherian.iff_fg]
   exact isNoetherian_adjoin_finset S (fun x => fun _ => IsIntegral.isIntegral x)
 
@@ -124,17 +125,19 @@ lemma EssFiniteType_and_algebraic_imp_finite (k K : Type) [Field k] [Field K] [A
   obtain ⟨S, hS⟩ := EssFiniteType_fieldExtension_is_fraction_ring k K
 
   let kEquiv : FractionRing k ≃ₐ[k] k := (FractionRing.algEquiv k k)
-  let KEquiv : FractionRing (Algebra.adjoin k S.toSet) ≃ₐ[adjoin k S.toSet] K :=
-      (FractionRing.algEquiv (Algebra.adjoin k S.toSet) K)
+  let KEquiv : FractionRing (Algebra.adjoin k <| SetLike.coe S) ≃ₐ[adjoin k <| SetLike.coe S] K :=
+      (FractionRing.algEquiv (Algebra.adjoin k <| SetLike.coe S) K)
 
-  have hFin1 : Module.Finite k (Algebra.adjoin k S.toSet) := module_finite_of_algebraic_and_FG k K S
+  have hFin1 : Module.Finite k (Algebra.adjoin k <| SetLike.coe S) :=
+    module_finite_of_algebraic_and_FG k K S
 
-  let alg : Algebra (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) :=
+  let alg : Algebra (FractionRing k) (FractionRing (Algebra.adjoin k <| SetLike.coe S)) :=
     FractionRing.liftAlgebra _ _
-  let mod : Module (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) := alg.toModule
+  let mod : Module (FractionRing k) (FractionRing (Algebra.adjoin k <| SetLike.coe S))
+    := alg.toModule
   let mod2 : Module (FractionRing k) K := by sorry
-  have hFin2 : FiniteDimensional (FractionRing k) (FractionRing (Algebra.adjoin k S.toSet)) := by
-    exact instFiniteDimensionalFractionRingOfFinite k (Algebra.adjoin k S.toSet)
+  have hFin2 : FiniteDimensional (FractionRing k) (FractionRing (Algebra.adjoin k <| SetLike.coe S))
+      := instFiniteDimensionalFractionRingOfFinite
   unfold FiniteDimensional at hFin2
   refine (Module.Finite.of_equiv_equiv kEquiv.toRingEquiv KEquiv.toRingEquiv ?_)
 
@@ -189,6 +192,7 @@ Elementary needed statements:
 -/
 
 open Polynomial
+open IntermediateField
 
 def Ksep (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K) :=
   separableClosure (IntermediateField.adjoin k (Set.range x)) K
@@ -209,15 +213,68 @@ def coefficients_of_element {k K : Type} [Field k] [Field K] [Algebra k K] {ι :
   exact r.coeffs ∪ s.coeffs
 
 open Classical in
-def coefficients_of_P (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type)
+def coefficients_of_P {k K : Type} [Field k] [Field K] [Algebra k K] (ι : Type)
     (x : ι → K) (P : Polynomial (IntermediateField.adjoin k (Set.range x))) : Finset K :=
   Finset.biUnion (⊤ : Finset (Fin P.natDegree))
     (fun i => coefficients_of_element x (P.coeff i) (by apply (P.coeff i).property; aesop))
 
--- def k'_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K) (β : K)
+-- Given a purely transcendental field extension k(x₁, ..., xₙ), this defines the field
+-- k(x₁^{1/p}, ..., xₙ^{1/p}), together with its injection from k(x₁, ..., xₙ).
+def adjoin_pth_roots {k K : Type} [Field k] [Field K] [Algebra k K] (p : ℕ) {ι : Type} [Fintype ι]
+    (x : ι → K) : Type :=
+  SplittingField <| Finset.prod Finset.univ
+    (fun i => (X^p - C ⟨x i,
+    IntermediateField.algebra_adjoin_le_adjoin k _ (mem_adjoin_of_mem (Set.mem_range.mpr ⟨i, rfl⟩))⟩
+      : (IntermediateField.adjoin k (Set.range x))[X]))
+deriving Field, Algebra (IntermediateField.adjoin k (Set.range x))
 
--- example (k : Type) [Field k] (p : ℕ) (hp : p.Prime) [CharP k p] (x : k) := AdjoinRoot (X ^ p - x)
--- example (k : Type) : SplittingField
+def adjoin_pth_roots' {k : Type} [Field k] (p : ℕ) (S : Finset k) : Type :=
+  SplittingField <| Finset.prod Finset.univ (fun (i : S) => (X ^ p - C i.val : k[X]))
+
+def k'_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) (β : K)
+    (p : ℕ) : Type :=
+  adjoin_pth_roots' p (coefficients_of_P ι x (P_of_beta k K ι x β))
+deriving Field, Algebra k
+
+lemma k'_purely_inseparable (k K : Type) [Field k] [Field K] [Algebra k K] (p : ℕ) (ι : Type)
+    (x : ι → K) (β : K) (p : ℕ) (hp : p.Prime) [CharP k p] :
+    IsPurelyInseparable k (k'_of_beta k K x β p) := by
+  unfold k'_of_beta
+  unfold adjoin_pth_roots'
+
+  sorry
+
+open Classical in
+example (k : Type) [Field k] (x : k) {p : ℕ} (hp : p.Prime) [CharP k p] (f : k[X])
+    (hf : Irreducible f) (hf2 : f.natSepDegree = 1) (K : Type) [Field K] [Algebra k K]
+    (hSplit : IsSplittingField k K f) [DecidableEq K] (z : K) (hz0 : z ≠ 0) (hz : f.aeval z = 0):
+    IsPurelyInseparable k K := by
+  apply isPurelyInseparable_of_finSepDegree_eq_one
+  -- rw [Irreducible.natSepDegree_eq_one_iff_of_monic' p] at hf2
+  -- rw [Polynomial.natSepDegree_eq_of_splits (E := K) f (Polynomial.IsSplittingField.splits K f)]
+    -- at hf2
+  have hSplit := Polynomial.IsSplittingField.adjoin_rootSet K f
+  -- have h1 : Fintype.card (f.rootSet K) = 1 := by
+    -- sorry
+  -- rw [IntermediateField.finSepDegree_adjoin_simple_eq_natSepDegree k K]
+  let fEquiv : K ≃ₐ[k] k⟮z⟯ := by sorry
+  rw [Field.finSepDegree_eq_of_equiv k K k⟮z⟯ fEquiv]
+  rw [IntermediateField.finSepDegree_adjoin_simple_eq_natSepDegree]
+  have minPoly_div : minpoly k z ∣ f := minpoly.dvd_iff.mpr hz
+  · have hf0 : f ≠ 0 := by sorry
+    have hm0 : (minpoly k z).natDegree ≠ 0 := by sorry
+    have hle : (minpoly k z).natSepDegree ≤ f.natSepDegree :=
+      Polynomial.natSepDegree_le_of_dvd _ _ minPoly_div hf0
+    apply (Polynomial.natSepDegree_ne_zero_iff (minpoly k z)).mpr at hm0
+    rw [hf2] at hle
+    grind
+  ·
+    sorry
+
+/- def k'_transcendental_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K)
+    (β : K) (p : ℕ) : Type :=
+
+  sorry-/
 
 
 
@@ -310,3 +367,6 @@ variable (hGlue : Arrow.mk S1.f₂₄ = Arrow.mk S2.f₁₃)
 
 #check Square.mk
 -- #check CategoryTheory.CommSq.horiz_comp (Square.commSq S1) (Square.commSq S2)
+
+variable (ι : Type) (x : ι → K) [Algebra k K]
+variable (h : IsTranscendenceBasis k x)
