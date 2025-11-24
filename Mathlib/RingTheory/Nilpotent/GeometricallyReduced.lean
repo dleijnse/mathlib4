@@ -73,6 +73,23 @@ theorem IsGeometricallyReduced.of_forall_fg
   simp_rw [isGeometricallyReduced_iff] at h
   exact ⟨IsReduced.tensorProduct_of_flat_of_forall_fg h⟩
 
+-- Proven by Junyan Xu
+open Algebra.TensorProduct in
+theorem IsGeometricallyReduced.of_localization {k A B : Type} [CommRing B] [CommRing A]
+    [h : Algebra A B] [Field k] [Algebra k A] [Algebra k B] [IsScalarTower k A B] {M : Submonoid A}
+    [Algebra.IsGeometricallyReduced k A] [IsLocalization M B] :
+    Algebra.IsGeometricallyReduced k B := by
+  rw [Algebra.isGeometricallyReduced_iff]
+  set kbar := AlgebraicClosure k
+  have : IsReduced (B ⊗[A] (A ⊗[k] kbar)) :=
+    let _ := @rightAlgebra
+    isReduced_localizationPreserves (algebraMapSubmonoid (A ⊗[k] kbar) M)
+      (B ⊗[A] (A ⊗[k] kbar)) (isReduced_of_injective _ (TensorProduct.comm ..).injective)
+  have e₁ := TensorProduct.congr (.refl (R := k) (A₁ := kbar))
+      ((TensorProduct.rid A A B).restrictScalars k)
+  have e₂ := (TensorProduct.comm ..).trans <| (TensorProduct.assoc k A B A kbar).restrictScalars k
+  exact isReduced_of_injective _ (e₁.symm.trans e₂).injective
+
 /-
 theorem IsGeometricallyReduced.of_localization2 {k A B : Type} [CommRing B] [CommRing A]
     [h : Algebra A B] [Field k] [Algebra k A] [Algebra k B] [IsScalarTower k A B] {M : Submonoid A}
