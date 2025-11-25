@@ -5,7 +5,7 @@ Authors: Dion Leijnse
 -/
 
 import Mathlib
-import Mathlib.Algebra.Category.FieldCat
+-- import Mathlib.Algebra.Category.FieldCat
 
 
 def separablyGeneratedBy (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) :=
@@ -218,6 +218,7 @@ def coefficients_of_P {k K : Type} [Field k] [Field K] [Algebra k K] (ι : Type)
   Finset.biUnion (⊤ : Finset (Fin P.natDegree))
     (fun i => coefficients_of_element x (P.coeff i) (by apply (P.coeff i).property; aesop))
 
+/-
 -- Given a purely transcendental field extension k(x₁, ..., xₙ), this defines the field
 -- k(x₁^{1/p}, ..., xₙ^{1/p}), together with its injection from k(x₁, ..., xₙ).
 def adjoin_pth_roots {k K : Type} [Field k] [Field K] [Algebra k K] (p : ℕ) {ι : Type} [Fintype ι]
@@ -230,24 +231,72 @@ deriving Field, Algebra (IntermediateField.adjoin k (Set.range x))
 
 def adjoin_pth_roots' {k : Type} [Field k] (p : ℕ) (S : Finset k) : Type :=
   SplittingField <| Finset.prod Finset.univ (fun (i : S) => (X ^ p - C i.val : k[X]))
+-/
+
+/- variable {k : Type} [Field k]
+variable (p : ℕ) (hp : p.Prime) [ExpChar k p]
+def kbar := AlgebraicClosure k deriving Field, Algebra k
+instance : ExpChar (@kbar k _) p := by apply ExpChar.of_injective_algebraMap' k-/
+
+open Classical in
+def adjoin_pth_roots {k : Type} [Field k] (p : ℕ) (S : Finset k) [ExpChar k p] : Type :=
+  letI : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
+  IntermediateField.adjoin k
+    (SetLike.coe (Finset.preimage (Finset.image (algebraMap k (AlgebraicClosure k)) S)
+      (frobenius (AlgebraicClosure k) p)
+        (fun _ _ _ _ ↦ fun a ↦ (frobenius_inj (AlgebraicClosure k) p) a)))
+deriving Field, Algebra k
+
+lemma adjoin_pth_roots_purelyInseparable {k : Type} [Field k] (p : ℕ) (S : Finset k) (_ : p.Prime)
+    [ExpChar k p] : IsPurelyInseparable k (adjoin_pth_roots p S) := by
+  unfold adjoin_pth_roots
+  rw [IntermediateField.isPurelyInseparable_adjoin_iff_pow_mem k (AlgebraicClosure k) p]
+  intro s hs
+  use 1
+  simp_all only [Finset.coe_preimage, Finset.coe_image, Set.mem_preimage, Set.mem_image,
+    SetLike.mem_coe, pow_one, RingHom.mem_range]
+  obtain ⟨w, h1, h2⟩ := hs
+  use w
+  rw [h2]
+  rfl
+
+lemma adjoin_pth_roots_finite {k : Type} [Field k] (p : ℕ) (S : Finset k) (hp : p.Prime)
+    [ExpChar k p] : FiniteDimensional k (adjoin_pth_roots p S) := by
+  unfold adjoin_pth_roots
+  apply IntermediateField.finiteDimensional_adjoin
+  intro s hs
+  apply IsIntegral.of_pow (n := p) (Nat.Prime.pos hp)
+  have hs_mem : s ^ p ∈ (algebraMap k (AlgebraicClosure k))'' S := by
+    simp_all only [Finset.coe_preimage, Finset.coe_image, Set.mem_preimage, Set.mem_image,
+      SetLike.mem_coe]
+    obtain ⟨w, hw⟩ := hs
+    use w
+    rw [hw.2]
+    exact ⟨hw.1, rfl⟩
+  simp only [Set.mem_image, SetLike.mem_coe] at hs_mem
+  obtain ⟨y, hy⟩ := hs_mem
+  rw [← hy.2]
+  exact isIntegral_algebraMap
 
 def k'_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) (β : K)
-    (p : ℕ) : Type :=
-  adjoin_pth_roots' p (coefficients_of_P ι x (P_of_beta k K ι x β))
+    (p : ℕ) [ExpChar k p] : Type :=
+  letI : ExpChar K p := ExpChar.of_injective_algebraMap' k _
+  adjoin_pth_roots p (coefficients_of_P ι x (P_of_beta k K ι x β))
 deriving Field, Algebra k
 
 lemma k'_purely_inseparable (k K : Type) [Field k] [Field K] [Algebra k K] (p : ℕ) (ι : Type)
-    (x : ι → K) (β : K) (p : ℕ) (hp : p.Prime) [CharP k p] :
+    (x : ι → K) (β : K) (p : ℕ) (hp : p.Prime) [ExpChar k p] :
     IsPurelyInseparable k (k'_of_beta k K x β p) := by
   unfold k'_of_beta
-  unfold adjoin_pth_roots'
+  -- apply adjoin_pth_roots_purelyInseparable
 
   sorry
+
 
 open Classical in
 example (k : Type) [Field k] (x : k) {p : ℕ} (hp : p.Prime) [CharP k p] (f : k[X])
     (hf : Irreducible f) (hf2 : f.natSepDegree = 1) (K : Type) [Field K] [Algebra k K]
-    (hSplit : IsSplittingField k K f) [DecidableEq K] (z : K) (hz0 : z ≠ 0) (hz : f.aeval z = 0):
+    (hSplit : IsSplittingField k K f) [DecidableEq K] (z : K) (hz0 : z ≠ 0) (hz : f.aeval z = 0) :
     IsPurelyInseparable k K := by
   apply isPurelyInseparable_of_finSepDegree_eq_one
   -- rw [Irreducible.natSepDegree_eq_one_iff_of_monic' p] at hf2
