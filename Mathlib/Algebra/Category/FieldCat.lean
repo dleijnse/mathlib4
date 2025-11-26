@@ -4,11 +4,15 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Dion Leijnse
 -/
 
-import Mathlib
+module
+
+public import Mathlib
 
 /-
 This file defines the category of Fields.
 -/
+
+@[expose] public section
 
 universe u v
 

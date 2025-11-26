@@ -5,7 +5,7 @@ Authors: Dion Leijnse
 -/
 
 import Mathlib
--- import Mathlib.Algebra.Category.FieldCat
+import Mathlib.Algebra.Category.FieldCat
 
 
 def separablyGeneratedBy (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) :=
@@ -239,16 +239,16 @@ def kbar := AlgebraicClosure k deriving Field, Algebra k
 instance : ExpChar (@kbar k _) p := by apply ExpChar.of_injective_algebraMap' k-/
 
 open Classical in
-def adjoin_pth_roots {k : Type} [Field k] (p : ℕ) (S : Finset k) [ExpChar k p] : Type :=
+def adjoin_pth_roots {k : Type} [Field k] (p : ℕ) (S : Finset k) [ExpChar k p] :
+    IntermediateField k (AlgebraicClosure k) :=
   letI : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
   IntermediateField.adjoin k
     (SetLike.coe (Finset.preimage (Finset.image (algebraMap k (AlgebraicClosure k)) S)
       (frobenius (AlgebraicClosure k) p)
         (fun _ _ _ _ ↦ fun a ↦ (frobenius_inj (AlgebraicClosure k) p) a)))
-deriving Field, Algebra k
 
-lemma adjoin_pth_roots_purelyInseparable {k : Type} [Field k] (p : ℕ) (S : Finset k) (_ : p.Prime)
-    [ExpChar k p] : IsPurelyInseparable k (adjoin_pth_roots p S) := by
+lemma adjoin_pth_roots_purelyInseparable {k : Type} [Field k] (p : ℕ) (S : Finset k) [ExpChar k p] :
+    IsPurelyInseparable k (adjoin_pth_roots p S) := by
   unfold adjoin_pth_roots
   rw [IntermediateField.isPurelyInseparable_adjoin_iff_pow_mem k (AlgebraicClosure k) p]
   intro s hs
@@ -279,24 +279,51 @@ lemma adjoin_pth_roots_finite {k : Type} [Field k] (p : ℕ) (S : Finset k) (hp 
   exact isIntegral_algebraMap
 
 def k'_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) (β : K)
-    (p : ℕ) [ExpChar k p] : Type :=
+    (p : ℕ) [ExpChar k p] : IntermediateField k (AlgebraicClosure k) :=
   letI : ExpChar K p := ExpChar.of_injective_algebraMap' k _
   adjoin_pth_roots p (coefficients_of_P ι x (P_of_beta k K ι x β))
-deriving Field, Algebra k
 
-lemma k'_purely_inseparable (k K : Type) [Field k] [Field K] [Algebra k K] (p : ℕ) (ι : Type)
-    (x : ι → K) (β : K) (p : ℕ) (hp : p.Prime) [ExpChar k p] :
+lemma k'_purely_inseparable (k K : Type) [Field k] [Field K] [Algebra k K] (p : ℕ) {ι : Type}
+    (x : ι → K) (β : K) [ExpChar k p] :
     IsPurelyInseparable k (k'_of_beta k K x β p) :=
-   adjoin_pth_roots_purelyInseparable _ _ hp
+   adjoin_pth_roots_purelyInseparable _ _
 
--- TODO: this definition is not yet correct, since we should start with k' instead of K. For this
--- we will need the external compositum.
+-- This definition is a bit ugly, but we need it for finiteness reasons.
 open Classical in
-def k'_transcendental_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K)
-    (τ : Finset ι) (β : K) (p : ℕ) [ExpChar k p] (hp : p.Prime) : Type :=
-  letI : ExpChar K p := ExpChar.of_injective_algebraMap' k _
-  adjoin_pth_roots p (Finset.image x τ)
-deriving Field, Algebra k
+def image_of_transcendence_basis (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
+    (x : ι → K) [Fintype ι] : Finset (IntermediateField.adjoin k (x '' ⊤)) :=
+  Set.toFinset ((fun i => ⟨x i, by apply IntermediateField.algebra_adjoin_le_adjoin k _ <|
+    mem_adjoin_of_mem <| Set.mem_image_of_mem x _ ; exact
+      (Set.top_eq_univ ▸ Set.mem_univ i) ⟩) '' ⊤)
+
+def k_transcendental_pth_roots (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K)
+    [Fintype ι] (p : ℕ) [ExpChar k p] : IntermediateField ((IntermediateField.adjoin k (x '' ⊤)))
+      (AlgebraicClosure ((IntermediateField.adjoin k (x '' ⊤)))) :=
+  adjoin_pth_roots p (image_of_transcendence_basis k K x)
+
+def k'_transcendental_pth_roots (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
+    (x : ι → K) [Fintype ι] (β : K) (p : ℕ) [ExpChar k p] : IntermediateField k
+      (AlgebraicClosure (IntermediateField.adjoin k (x '' ⊤))) :=
+  letI : NoZeroSMulDivisors ((IntermediateField.adjoin k (x '' ⊤)))
+    (AlgebraicClosure (IntermediateField.adjoin k (x '' ⊤))) := GroupWithZero.toNoZeroSMulDivisors
+  (k'_of_beta k K x β p).map IsAlgClosed.lift ⊔ (restrictScalars k
+    ((k_transcendental_pth_roots k K ι x p).map IsAlgClosed.lift))
+
+example (A B C : Type) [Field A] [Field B] [Field C] [Algebra A B] [Algebra A C] [Algebra B C]
+    [IsScalarTower A B C] (k : IntermediateField B C) : IntermediateField A C := restrictScalars A k
+
+
+lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K]
+    [Algebra.IsAlgebraic k K] [Algebra.IsSeparable k K] (α : k) (P : Polynomial k)
+    (hP : P.aeval α = 0) (p : ℕ) (hp : p.Prime) [ExpChar k p]
+    (h_pth_power : ∀ i : Fin P.natDegree, ∃ y : k, y ^p = P.coeff i)
+    (h_noDup : P.Separable) :
+    ∃ β : k, β ^ p = α := by
+  by_contra hcontra
+  have hIrred : Irreducible (X ^ p - C α : K[X]) := by sorry
+  sorry
+
+
 
 
 open CategoryTheory
