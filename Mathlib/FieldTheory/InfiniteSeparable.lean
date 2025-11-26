@@ -320,7 +320,8 @@ lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K
     (h_noDup : P.Separable) :
     ∃ β : k, β ^ p = α := by
   by_contra hcontra
-  have hIrred : Irreducible (X ^ p - C α : K[X]) := by sorry
+  have hIrred : Irreducible (X ^ p - C (algebraMap k K α)) := by
+    sorry
   sorry
 
 
