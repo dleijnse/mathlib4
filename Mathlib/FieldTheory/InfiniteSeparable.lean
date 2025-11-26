@@ -214,9 +214,9 @@ def coefficients_of_element {k K : Type} [Field k] [Field K] [Algebra k K] {ι :
 
 open Classical in
 def coefficients_of_P {k K : Type} [Field k] [Field K] [Algebra k K] (ι : Type)
-    (x : ι → K) (P : Polynomial (IntermediateField.adjoin k (Set.range x))) : Finset K :=
+    (x : ι → K) (P : Polynomial (IntermediateField.adjoin k (Set.range x))) : Finset k :=
   Finset.biUnion (⊤ : Finset (Fin P.natDegree))
-    (fun i => coefficients_of_element x (P.coeff i) (by apply (P.coeff i).property; aesop))
+    (fun i => coefficients_of_element x (P.coeff i) (by apply (P.coeff i).property))
 
 /-
 -- Given a purely transcendental field extension k(x₁, ..., xₙ), this defines the field
@@ -286,45 +286,17 @@ deriving Field, Algebra k
 
 lemma k'_purely_inseparable (k K : Type) [Field k] [Field K] [Algebra k K] (p : ℕ) (ι : Type)
     (x : ι → K) (β : K) (p : ℕ) (hp : p.Prime) [ExpChar k p] :
-    IsPurelyInseparable k (k'_of_beta k K x β p) := by
-  unfold k'_of_beta
-  -- apply adjoin_pth_roots_purelyInseparable
+    IsPurelyInseparable k (k'_of_beta k K x β p) :=
+   adjoin_pth_roots_purelyInseparable _ _ hp
 
-  sorry
-
-
+-- TODO: this definition is not yet correct, since we should start with k' instead of K. For this
+-- we will need the external compositum.
 open Classical in
-example (k : Type) [Field k] (x : k) {p : ℕ} (hp : p.Prime) [CharP k p] (f : k[X])
-    (hf : Irreducible f) (hf2 : f.natSepDegree = 1) (K : Type) [Field K] [Algebra k K]
-    (hSplit : IsSplittingField k K f) [DecidableEq K] (z : K) (hz0 : z ≠ 0) (hz : f.aeval z = 0) :
-    IsPurelyInseparable k K := by
-  apply isPurelyInseparable_of_finSepDegree_eq_one
-  -- rw [Irreducible.natSepDegree_eq_one_iff_of_monic' p] at hf2
-  -- rw [Polynomial.natSepDegree_eq_of_splits (E := K) f (Polynomial.IsSplittingField.splits K f)]
-    -- at hf2
-  have hSplit := Polynomial.IsSplittingField.adjoin_rootSet K f
-  -- have h1 : Fintype.card (f.rootSet K) = 1 := by
-    -- sorry
-  -- rw [IntermediateField.finSepDegree_adjoin_simple_eq_natSepDegree k K]
-  let fEquiv : K ≃ₐ[k] k⟮z⟯ := by sorry
-  rw [Field.finSepDegree_eq_of_equiv k K k⟮z⟯ fEquiv]
-  rw [IntermediateField.finSepDegree_adjoin_simple_eq_natSepDegree]
-  have minPoly_div : minpoly k z ∣ f := minpoly.dvd_iff.mpr hz
-  · have hf0 : f ≠ 0 := by sorry
-    have hm0 : (minpoly k z).natDegree ≠ 0 := by sorry
-    have hle : (minpoly k z).natSepDegree ≤ f.natSepDegree :=
-      Polynomial.natSepDegree_le_of_dvd _ _ minPoly_div hf0
-    apply (Polynomial.natSepDegree_ne_zero_iff (minpoly k z)).mpr at hm0
-    rw [hf2] at hle
-    grind
-  ·
-    sorry
-
-/- def k'_transcendental_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K)
-    (β : K) (p : ℕ) : Type :=
-
-  sorry-/
-
+def k'_transcendental_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K)
+    (τ : Finset ι) (β : K) (p : ℕ) [ExpChar k p] (hp : p.Prime) : Type :=
+  letI : ExpChar K p := ExpChar.of_injective_algebraMap' k _
+  adjoin_pth_roots p (Finset.image x τ)
+deriving Field, Algebra k
 
 
 open CategoryTheory
