@@ -313,18 +313,95 @@ example (A B C : Type) [Field A] [Field B] [Field C] [Algebra A B] [Algebra A C]
     [IsScalarTower A B C] (k : IntermediateField B C) : IntermediateField A C := restrictScalars A k
 
 
+-- TODO: place this in a different file, it generalizes X_pow_sub_one_separable_iff (but does
+-- require the extra assumption that n is not zero, so it is not a complete generalization)
+theorem X_pow_sub_C_separable_iff {F : Type} [Field F] {n : ℕ} (x : F) (hn : n > 0)
+    (hx : IsUnit x) : (X ^ n - C x : F[X]).Separable ↔ (n : F) ≠ 0 := by
+  refine ⟨?_, fun h => separable_X_pow_sub_C_unit hx.unit (IsUnit.mk0 _ h)⟩
+  rw [separable_def', derivative_sub, derivative_X_pow, derivative_C, sub_zero]
+  rintro (h : IsCoprime _ _) hn'
+  rw [hn', C_0, zero_mul, isCoprime_zero_right] at h
+  have hDeg : (X ^ n - C x).natDegree = n := by simp
+  exact not_isUnit_of_natDegree_pos (X ^ n - C x) (hDeg.symm ▸ hn) h
+
+open Classical in
+@[stacks 031V "(2)"]
 lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K]
-    [Algebra.IsAlgebraic k K] [Algebra.IsSeparable k K] (α : k) (P : Polynomial k)
-    (hP : P.aeval α = 0) (p : ℕ) (hp : p.Prime) [ExpChar k p]
-    (h_pth_power : ∀ i : Fin P.natDegree, ∃ y : k, y ^p = P.coeff i)
+    [Algebra.IsAlgebraic k K] [Algebra.IsSeparable k K] (α : K) (P : Polynomial k)
+    (hP : P.aeval α = 0) (p : ℕ) (hp : p.Prime) [ExpChar k p] (q : ℕ) [hCq : CharP k q]
+    (hq : q.Prime)
+    (h_pth_power_coeff : ∃ Q : Polynomial k, P = Polynomial.map (frobenius k p) Q)
     (h_noDup : P.Separable) :
-    ∃ β : k, β ^ p = α := by
-  by_contra hcontra
-  have hIrred : Irreducible (X ^ p - C (algebraMap k K α)) := by
+    ∃ β : K, β ^ p = α := by
+  by_cases hα : ∃ β : K, β ^ p = α
+  · tauto
+  · have hIrred : Irreducible (X ^ p - C α) := by
+      apply X_pow_sub_C_irreducible_of_prime hp
+      tauto
+    obtain ⟨Q, hQ ⟩ := h_pth_power_coeff
+    obtain ⟨ρ, hρ⟩ := IsAlgClosed.exists_pow_nat_eq (algebraMap K (AlgebraicClosure K) α)
+      (Nat.Prime.pos hp)
+    have QXp_dvd : (X ^ p - C α) ∣ Polynomial.mapAlg k K Q := by
+      have hRoot : aeval ρ (X ^ p - C α) = 0 ∧ aeval ρ Q = 0 := by
+        constructor
+        · simp [hρ]
+        · sorry
+      have hMinPoly : X ^ p - C α = minpoly K ρ := by
+        apply minpoly.eq_of_irreducible_of_monic hIrred
+        · simp [hρ]
+        · have hDeg : (X ^ p - C α).natDegree = p := by simp
+          rw [Monic.def]
+          unfold leadingCoeff
+          rw [hDeg]
+          have hPos := Nat.Prime.pos hp
+          simp only [coeff_sub, coeff_X_pow, ↓reduceIte, sub_eq_self]
+          sorry
+      rw [hMinPoly]
+      apply minpoly.dvd
+      rw [← hRoot.2, mapAlg_eq_map, aeval_map_algebraMap]
+    have hSep : Q.Separable := by
+      rw [hQ] at h_noDup
+      exact (Polynomial.separable_map _).mp h_noDup
+    have hSep' : (mapAlg k K Q).Separable := by
+      sorry
+    apply Polynomial.Separable.of_dvd hSep' at QXp_dvd
+    have hαUnit : IsUnit α := by
+      rw [isUnit_iff_ne_zero]
+      by_contra hzero
+      rw [hzero] at hα
+      exact (hα (by use 0; exact zero_pow (pos_iff_ne_zero.mp (Nat.Prime.pos hp))))
+    have hThm := not_iff_not.mpr (X_pow_sub_C_separable_iff α (Nat.Prime.pos hp) hαUnit)
+    have hpzero : (p : k) = 0 := by
+      rw [← (CharP.charP_iff_prime_eq_zero hp)]
+      exact ((char_eq_expChar_iff k q p).mpr hq) ▸ hCq
+
     sorry
+
+@[stacks 031V "(1)"]
+lemma pth_power_poly_imp_pth_power' (k K : Type) [Field k] [Field K] [Algebra k K]
+    [Algebra.IsAlgebraic k K] [Algebra.IsSeparable k K] (α : K) (p : ℕ) (hp : p.Prime)
+    [ExpChar k p]
+    (h_pth_power_coeff : ∃ Q : Polynomial K, Q.natDegree = (minpoly K α).natDegree ∧
+      ∀ i : Fin Q.natDegree, (Q.coeff i) ^ p = ((minpoly K α).coeff i) ^ p) :
+    ∃ β : K, β ^ p = α := by
   sorry
 
+example (k : Type) [Field k] (x : k) (p : ℕ) (hp : 0 < p) :
+    ∃ y, y ^ p = algebraMap k (AlgebraicClosure k) x := by
+  apply IsAlgClosed.exists_pow_nat_eq
+  exact hp
 
+example (p : ℕ) (hp : p.Prime) : p > 0 := Nat.Prime.pos hp
+
+example (k : Type) [Field k] (x : k) (p : ℕ) (hp : p.Prime) [ExpChar k p] :
+    ¬ (X ^ p - C x).Separable := by
+  apply?
+  sorry
+
+example (k : Type) [Field k] (x : k) (p : Polynomial k) (hp : Irreducible p) (hpM : Monic p) :
+    p = minpoly k x := by
+  refine minpoly.eq_of_irreducible_of_monic hp ?_ hpM
+  sorry
 
 
 open CategoryTheory
