@@ -328,8 +328,7 @@ open Classical in
 @[stacks 031V "(2)"]
 lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K]
     [Algebra.IsAlgebraic k K] [Algebra.IsSeparable k K] (α : K) (P : Polynomial k)
-    (hP : P.aeval α = 0) (p : ℕ) (hp : p.Prime) [ExpChar k p] (q : ℕ) [hCq : CharP k q]
-    (hq : q.Prime)
+    (hP : P.aeval α = 0) (p : ℕ) (hp : p.Prime) [ExpChar k p] [CharP k p]
     (h_pth_power_coeff : ∃ Q : Polynomial k, P = Polynomial.map (frobenius k p) Q)
     (h_noDup : P.Separable) :
     ∃ β : K, β ^ p = α := by
@@ -345,7 +344,16 @@ lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K
       have hRoot : aeval ρ (X ^ p - C α) = 0 ∧ aeval ρ Q = 0 := by
         constructor
         · simp [hρ]
-        · sorry
+        · haveI : ExpChar (AlgebraicClosure K) p := by
+            apply ExpChar.of_injective_algebraMap' k
+          have hFrob : frobenius (AlgebraicClosure K) p ((aeval ρ) Q) = 0 := by
+            rw [← Polynomial.eval_map_algebraMap, ← Polynomial.eval₂_at_apply, frobenius_def, hρ,
+                Polynomial.eval₂_map, ← RingHom.frobenius_comm, ← Polynomial.eval₂_map, ← hQ,
+                ← Polynomial.aeval_def, aeval_algebraMap_eq_zero_iff]
+            exact hP
+          have hinj := injective_frobenius (AlgebraicClosure K) p
+          subst hQ
+          simp_all only [not_exists, map_eq_zero, injective_frobenius]
       have hMinPoly : X ^ p - C α = minpoly K ρ := by
         apply minpoly.eq_of_irreducible_of_monic hIrred
         · simp [hρ]
@@ -355,32 +363,31 @@ lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K
           rw [hDeg]
           have hPos := Nat.Prime.pos hp
           simp only [coeff_sub, coeff_X_pow, ↓reduceIte, sub_eq_self]
-          sorry
+          exact Polynomial.coeff_C_ne_zero (Nat.ne_zero_of_lt hPos)
       rw [hMinPoly]
       apply minpoly.dvd
       rw [← hRoot.2, mapAlg_eq_map, aeval_map_algebraMap]
-    have hSep : Q.Separable := by
+    have hSep : (mapAlg k K Q).Separable := by
       rw [hQ] at h_noDup
-      exact (Polynomial.separable_map _).mp h_noDup
-    have hSep' : (mapAlg k K Q).Separable := by
-      sorry
-    apply Polynomial.Separable.of_dvd hSep' at QXp_dvd
+      exact Polynomial.Separable.map ((Polynomial.separable_map _).mp h_noDup)
+    apply Polynomial.Separable.of_dvd hSep at QXp_dvd
     have hαUnit : IsUnit α := by
       rw [isUnit_iff_ne_zero]
       by_contra hzero
       rw [hzero] at hα
       exact (hα (by use 0; exact zero_pow (pos_iff_ne_zero.mp (Nat.Prime.pos hp))))
     have hThm := not_iff_not.mpr (X_pow_sub_C_separable_iff α (Nat.Prime.pos hp) hαUnit)
-    have hpzero : (p : k) = 0 := by
-      rw [← (CharP.charP_iff_prime_eq_zero hp)]
-      exact ((char_eq_expChar_iff k q p).mpr hq) ▸ hCq
-
-    sorry
+    have hpzero : (p : K) = 0 := by
+      rw [← (CharP.charP_iff_prime_eq_zero hp), ← Algebra.charP_iff k K p]
+      assumption
+    exfalso
+    simp only [ne_eq, Decidable.not_not] at hThm
+    exact hThm.mpr hpzero QXp_dvd
 
 @[stacks 031V "(1)"]
 lemma pth_power_poly_imp_pth_power' (k K : Type) [Field k] [Field K] [Algebra k K]
     [Algebra.IsAlgebraic k K] [Algebra.IsSeparable k K] (α : K) (p : ℕ) (hp : p.Prime)
-    [ExpChar k p]
+    [ExpChar k p] [CharP k p]
     (h_pth_power_coeff : ∃ Q : Polynomial K, Q.natDegree = (minpoly K α).natDegree ∧
       ∀ i : Fin Q.natDegree, (Q.coeff i) ^ p = ((minpoly K α).coeff i) ^ p) :
     ∃ β : K, β ^ p = α := by
@@ -402,6 +409,8 @@ example (k : Type) [Field k] (x : k) (p : Polynomial k) (hp : Irreducible p) (hp
     p = minpoly k x := by
   refine minpoly.eq_of_irreducible_of_monic hp ?_ hpM
   sorry
+
+example (n : ℕ) (hn : n > 0) : n ≠ 0 := by exact Nat.ne_zero_of_lt hn
 
 
 open CategoryTheory
