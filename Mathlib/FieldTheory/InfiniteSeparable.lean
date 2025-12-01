@@ -90,12 +90,12 @@ noncomputable section
 
 lemma EssFiniteType_fieldExtension_is_fraction_ring (k K : Type) [Field k] [Field K] [Algebra k K]
     [h : Algebra.EssFiniteType k K]
-    : ∃ S : Finset K, IsFractionRing (Algebra.adjoin k S.toSet) K := by
+    : ∃ S : Finset K, IsFractionRing (Algebra.adjoin k <| SetLike.coe S) K := by
   obtain ⟨S, hS⟩ := h.cond
   use S
   unfold IsFractionRing
-  have h2 : Submonoid.comap (algebraMap (Algebra.adjoin k S.toSet) K) (IsUnit.submonoid K) =
-      nonZeroDivisors (Algebra.adjoin k S.toSet) := by
+  have h2 : Submonoid.comap (algebraMap (Algebra.adjoin k <| SetLike.coe S) K) (IsUnit.submonoid K)
+      = nonZeroDivisors (Algebra.adjoin k <| SetLike.coe S) := by
     ext x
     simp only [Submonoid.mem_comap, IsUnit.mem_submonoid_iff, Subalgebra.algebraMap_apply,
       isUnit_iff_ne_zero, ne_eq, ZeroMemClass.coe_eq_zero, mem_nonZeroDivisors_iff_ne_zero]
@@ -195,16 +195,20 @@ open Polynomial
 open IntermediateField
 
 def Ksep (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K) :=
-  separableClosure (IntermediateField.adjoin k (Set.range x)) K
+  separableClosure (IntermediateField.adjoin k (x '' ⊤)) K
 
 def P_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K) (β : K) :
-    Polynomial (IntermediateField.adjoin k (Set.range x)) :=
-  minpoly (IntermediateField.adjoin k (Set.range x)) β
+    Polynomial (IntermediateField.adjoin k (x '' ⊤)) :=
+  minpoly (IntermediateField.adjoin k (x '' ⊤)) β
 
+-- write an element of k(x_i) as a quotient of two polynomials in the x_i, and give the union of
+-- the sets of coefficients of those polynomials.
 def coefficients_of_element {k K : Type} [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
-    (y : K) (hy : y ∈ IntermediateField.adjoin k (Set.range x)) :
+    (y : K) (hy : y ∈ IntermediateField.adjoin k (x '' ⊤)) :
     Finset k := by
   classical
+  rw [Set.top_eq_univ] at hy
+  rw [Set.image_univ] at hy
   rw [IntermediateField.mem_adjoin_range_iff] at hy
   let r := Classical.choose hy
   let h2 := Classical.choose_spec hy
@@ -213,30 +217,15 @@ def coefficients_of_element {k K : Type} [Field k] [Field K] [Algebra k K] {ι :
   exact r.coeffs ∪ s.coeffs
 
 open Classical in
+def coefficients_of_S {k K : Type} [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
+    (S : Finset (IntermediateField.adjoin k (x '' ⊤))) : Finset k :=
+  Finset.biUnion S (fun s => coefficients_of_element x s s.prop)
+
+open Classical in
 def coefficients_of_P {k K : Type} [Field k] [Field K] [Algebra k K] (ι : Type)
-    (x : ι → K) (P : Polynomial (IntermediateField.adjoin k (Set.range x))) : Finset k :=
+    (x : ι → K) (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) : Finset k :=
   Finset.biUnion (⊤ : Finset (Fin P.natDegree))
     (fun i => coefficients_of_element x (P.coeff i) (by apply (P.coeff i).property))
-
-/-
--- Given a purely transcendental field extension k(x₁, ..., xₙ), this defines the field
--- k(x₁^{1/p}, ..., xₙ^{1/p}), together with its injection from k(x₁, ..., xₙ).
-def adjoin_pth_roots {k K : Type} [Field k] [Field K] [Algebra k K] (p : ℕ) {ι : Type} [Fintype ι]
-    (x : ι → K) : Type :=
-  SplittingField <| Finset.prod Finset.univ
-    (fun i => (X^p - C ⟨x i,
-    IntermediateField.algebra_adjoin_le_adjoin k _ (mem_adjoin_of_mem (Set.mem_range.mpr ⟨i, rfl⟩))⟩
-      : (IntermediateField.adjoin k (Set.range x))[X]))
-deriving Field, Algebra (IntermediateField.adjoin k (Set.range x))
-
-def adjoin_pth_roots' {k : Type} [Field k] (p : ℕ) (S : Finset k) : Type :=
-  SplittingField <| Finset.prod Finset.univ (fun (i : S) => (X ^ p - C i.val : k[X]))
--/
-
-/- variable {k : Type} [Field k]
-variable (p : ℕ) (hp : p.Prime) [ExpChar k p]
-def kbar := AlgebraicClosure k deriving Field, Algebra k
-instance : ExpChar (@kbar k _) p := by apply ExpChar.of_injective_algebraMap' k-/
 
 open Classical in
 def adjoin_pth_roots {k : Type} [Field k] (p : ℕ) (S : Finset k) [ExpChar k p] :
@@ -278,14 +267,15 @@ lemma adjoin_pth_roots_finite {k : Type} [Field k] (p : ℕ) (S : Finset k) (hp 
   rw [← hy.2]
   exact isIntegral_algebraMap
 
-def k'_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) (β : K)
-    (p : ℕ) [ExpChar k p] : IntermediateField k (AlgebraicClosure k) :=
+def k'_of_P (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
+    (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) (p : ℕ) [ExpChar k p] :
+    IntermediateField k (AlgebraicClosure k) :=
   letI : ExpChar K p := ExpChar.of_injective_algebraMap' k _
-  adjoin_pth_roots p (coefficients_of_P ι x (P_of_beta k K ι x β))
+  adjoin_pth_roots p (coefficients_of_P ι x P)
 
 lemma k'_purely_inseparable (k K : Type) [Field k] [Field K] [Algebra k K] (p : ℕ) {ι : Type}
-    (x : ι → K) (β : K) [ExpChar k p] :
-    IsPurelyInseparable k (k'_of_beta k K x β p) :=
+    (x : ι → K) [ExpChar k p] (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) :
+    IsPurelyInseparable k (k'_of_P k K x P p) :=
    adjoin_pth_roots_purelyInseparable _ _
 
 -- This definition is a bit ugly, but we need it for finiteness reasons.
@@ -302,15 +292,62 @@ def k_transcendental_pth_roots (k K : Type) [Field k] [Field K] [Algebra k K] (�
   adjoin_pth_roots p (image_of_transcendence_basis k K x)
 
 def k'_transcendental_pth_roots (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
-    (x : ι → K) [Fintype ι] (β : K) (p : ℕ) [ExpChar k p] : IntermediateField k
+    (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p]
+    (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) : IntermediateField k
       (AlgebraicClosure (IntermediateField.adjoin k (x '' ⊤))) :=
   letI : NoZeroSMulDivisors ((IntermediateField.adjoin k (x '' ⊤)))
     (AlgebraicClosure (IntermediateField.adjoin k (x '' ⊤))) := GroupWithZero.toNoZeroSMulDivisors
-  (k'_of_beta k K x β p).map IsAlgClosed.lift ⊔ (restrictScalars k
-    ((k_transcendental_pth_roots k K ι x p).map IsAlgClosed.lift))
+  (k'_of_P k K x P p).map IsAlgClosed.lift ⊔ (restrictScalars k
+    (k_transcendental_pth_roots k K ι x p))
 
-example (A B C : Type) [Field A] [Field B] [Field C] [Algebra A B] [Algebra A C] [Algebra B C]
-    [IsScalarTower A B C] (k : IntermediateField B C) : IntermediateField A C := restrictScalars A k
+def trivial_incl1 (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
+    (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p] :
+    (IntermediateField.adjoin k (x '' ⊤)) →+* k_transcendental_pth_roots k K ι x p :=
+  algebraMap ↥(IntermediateField.adjoin k (x '' ⊤)) ↥(k_transcendental_pth_roots k K ι x p)
+
+lemma trivial_inc2' (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
+    (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p]
+    (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) :
+    restrictScalars k (k_transcendental_pth_roots k K ι x p) ≤
+      k'_transcendental_pth_roots k K x p P := by
+  unfold k'_transcendental_pth_roots
+  exact le_sup_right
+
+def trivial_incl2 (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
+    (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p]
+    (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) :
+    k_transcendental_pth_roots k K ι x p →ₐ[k] k'_transcendental_pth_roots k K x p P :=
+  IntermediateField.inclusion (trivial_inc2' k K x p P)
+
+instance alg_k' (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) [Fintype ι]
+    (p : ℕ) [ExpChar k p] (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) :
+      Algebra (IntermediateField.adjoin k (x '' ⊤)) (k'_transcendental_pth_roots k K x p P) :=
+  RingHom.toAlgebra ((trivial_incl2 k K x p P).toRingHom.comp (trivial_incl1 k K x p))
+
+-- TODO: make the definition of k'_transcendental depend on a Finset S : IntermediateField.adjoin
+-- instead of the specific polynomial P.
+lemma test (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) (p : ℕ)
+    [ExpChar k p] (hp : p.Prime) (y : K) (hy : y ∈ IntermediateField.adjoin k (x '' ⊤)) :
+    y ∈ RingHom.range (frobenius _ p) := by
+  sorry
+
+
+lemma P_coeff_is_pth_power_k'_of_transcendental (k K : Type) [Field k] [Field K] [Algebra k K]
+    {ι : Type} (x : ι → K) [Fintype ι] (p : ℕ) [CharP k p] (hp : p.Prime) [ExpChar k p]
+    (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) (i : ℕ) :
+    P.coeff i ∈ (frobenius _ p).range := by
+
+  sorry
+
+-- Now the main reason for defining k':
+lemma P_is_pth_power_k'_transcendental (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
+    (x : ι → K) [Fintype ι] (p : ℕ) [CharP k p] (hp : p.Prime) [ExpChar k p]
+    (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) :
+    ∃ Q : Polynomial (k'_transcendental_pth_roots k K x p P), Polynomial.map
+      (algebraMap (IntermediateField.adjoin k (x '' ⊤)) _)
+      P = Polynomial.map (frobenius _ p) Q := by
+
+  sorry
 
 
 -- TODO: place this in a different file, it generalizes X_pow_sub_one_separable_iff (but does
@@ -328,7 +365,7 @@ open Classical in
 @[stacks 031V "(2)"]
 lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K]
     [Algebra.IsAlgebraic k K] [Algebra.IsSeparable k K] (α : K) (P : Polynomial k)
-    (hP : P.aeval α = 0) (p : ℕ) (hp : p.Prime) [ExpChar k p] [CharP k p]
+    (hP : P.aeval α = 0) (p : ℕ) (hp : p.Prime) [CharP k p] [ExpChar k p]
     (h_pth_power_coeff : ∃ Q : Polynomial k, P = Polynomial.map (frobenius k p) Q)
     (h_noDup : P.Separable) :
     ∃ β : K, β ^ p = α := by
@@ -337,10 +374,12 @@ lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K
   · have hIrred : Irreducible (X ^ p - C α) := by
       apply X_pow_sub_C_irreducible_of_prime hp
       tauto
-    obtain ⟨Q, hQ ⟩ := h_pth_power_coeff
+    obtain ⟨Q, hQ⟩ := h_pth_power_coeff
     obtain ⟨ρ, hρ⟩ := IsAlgClosed.exists_pow_nat_eq (algebraMap K (AlgebraicClosure K) α)
       (Nat.Prime.pos hp)
-    have QXp_dvd : (X ^ p - C α) ∣ Polynomial.mapAlg k K Q := by
+    have QX_pow_p_dvd : (X ^ p - C α) ∣ Polynomial.mapAlg k K Q := by
+      -- We will prove this by proving that X ^ p - C α is the minimal polynomial of ρ over K and
+      -- that Q(ρ) = 0, the result then follows from `minpoly.dvd`
       have hRoot : aeval ρ (X ^ p - C α) = 0 ∧ aeval ρ Q = 0 := by
         constructor
         · simp [hρ]
@@ -351,9 +390,8 @@ lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K
                 Polynomial.eval₂_map, ← RingHom.frobenius_comm, ← Polynomial.eval₂_map, ← hQ,
                 ← Polynomial.aeval_def, aeval_algebraMap_eq_zero_iff]
             exact hP
-          have hinj := injective_frobenius (AlgebraicClosure K) p
           subst hQ
-          simp_all only [not_exists, map_eq_zero, injective_frobenius]
+          simp_all only [not_exists, map_eq_zero]
       have hMinPoly : X ^ p - C α = minpoly K ρ := by
         apply minpoly.eq_of_irreducible_of_monic hIrred
         · simp [hρ]
@@ -370,7 +408,7 @@ lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K
     have hSep : (mapAlg k K Q).Separable := by
       rw [hQ] at h_noDup
       exact Polynomial.Separable.map ((Polynomial.separable_map _).mp h_noDup)
-    apply Polynomial.Separable.of_dvd hSep at QXp_dvd
+    apply Polynomial.Separable.of_dvd hSep at QX_pow_p_dvd
     have hαUnit : IsUnit α := by
       rw [isUnit_iff_ne_zero]
       by_contra hzero
@@ -382,35 +420,21 @@ lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K
       assumption
     exfalso
     simp only [ne_eq, Decidable.not_not] at hThm
-    exact hThm.mpr hpzero QXp_dvd
+    exact hThm.mpr hpzero QX_pow_p_dvd
 
 @[stacks 031V "(1)"]
 lemma pth_power_poly_imp_pth_power' (k K : Type) [Field k] [Field K] [Algebra k K]
-    [Algebra.IsAlgebraic k K] [Algebra.IsSeparable k K] (α : K) (p : ℕ) (hp : p.Prime)
+    [Algebra.IsAlgebraic k K] [hASep : Algebra.IsSeparable k K] (α : K) (p : ℕ) (hp : p.Prime)
     [ExpChar k p] [CharP k p]
-    (h_pth_power_coeff : ∃ Q : Polynomial K, Q.natDegree = (minpoly K α).natDegree ∧
-      ∀ i : Fin Q.natDegree, (Q.coeff i) ^ p = ((minpoly K α).coeff i) ^ p) :
-    ∃ β : K, β ^ p = α := by
-  sorry
+    (h_pth_power_coeff : ∃ Q : Polynomial k, ((minpoly k α)) = Polynomial.map (frobenius k p) Q) :
+    ∃ β : K, β ^ p = α :=
+  pth_power_poly_imp_pth_power k K α (minpoly k α) (minpoly.aeval k α) p hp h_pth_power_coeff
+    ((Algebra.isSeparable_def k K).mp hASep α)
 
-example (k : Type) [Field k] (x : k) (p : ℕ) (hp : 0 < p) :
-    ∃ y, y ^ p = algebraMap k (AlgebraicClosure k) x := by
-  apply IsAlgClosed.exists_pow_nat_eq
-  exact hp
 
-example (p : ℕ) (hp : p.Prime) : p > 0 := Nat.Prime.pos hp
 
-example (k : Type) [Field k] (x : k) (p : ℕ) (hp : p.Prime) [ExpChar k p] :
-    ¬ (X ^ p - C x).Separable := by
-  apply?
-  sorry
 
-example (k : Type) [Field k] (x : k) (p : Polynomial k) (hp : Irreducible p) (hpM : Monic p) :
-    p = minpoly k x := by
-  refine minpoly.eq_of_irreducible_of_monic hp ?_ hpM
-  sorry
 
-example (n : ℕ) (hn : n > 0) : n ≠ 0 := by exact Nat.ne_zero_of_lt hn
 
 
 open CategoryTheory
