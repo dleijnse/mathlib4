@@ -229,13 +229,21 @@ lemma coefficients_of_element_prop (k : Type) {K : Type} [Field k] [Field K] [Al
   use (Classical.choose (Classical.choose_spec hy))
   refine ⟨?_, Classical.choose_spec (Classical.choose_spec hy)⟩
   unfold coefficients_of_element
-  simp only
-
+  dsimp
 
 open Classical in
 def coefficients_of_S (k : Type) {K : Type} [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
     (S : Finset (IntermediateField.adjoin k (x '' ⊤))) : Finset k :=
   Finset.biUnion S (fun s => coefficients_of_element k x s s.prop)
+
+/-
+open Classical in
+lemma coefficients_of_S_prop (k : Type) {K : Type} [Field k] [Field K] [Algebra k K] {ι : Type}
+    (x : ι → K) (S : Finset (IntermediateField.adjoin k (x '' ⊤))) (y : K) (hy : y ∈ S) :
+    ∃ r :  MvPolynomial ι k, ∃ s : MvPolynomial ι k,
+      r.coeffs ∪ s.coeffs ⊆ coefficients_of_S k x S ∧
+      y = (MvPolynomial.aeval x) r / (MvPolynomial.aeval x) s := by
+  sorry -/
 
 open Classical in
 def coefficients_of_P {k K : Type} [Field k] [Field K] [Algebra k K] (ι : Type)
@@ -244,60 +252,106 @@ def coefficients_of_P {k K : Type} [Field k] [Field K] [Algebra k K] (ι : Type)
     (fun i => coefficients_of_element k x (P.coeff i) (by apply (P.coeff i).property))
 
 open Classical in
-def adjoin_pth_roots {k : Type} [Field k] (p : ℕ) (S : Finset k) [ExpChar k p] :
+def adjoin_pth_roots {k : Type} [Field k] (p : ℕ) (S : Set k) [ExpChar k p] :
     IntermediateField k (AlgebraicClosure k) :=
-  letI : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
-  IntermediateField.adjoin k
-    (SetLike.coe (Finset.preimage (Finset.image (algebraMap k (AlgebraicClosure k)) S)
-      (frobenius (AlgebraicClosure k) p)
-        (fun _ _ _ _ ↦ fun a ↦ (frobenius_inj (AlgebraicClosure k) p) a)))
+  have _ : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
+  IntermediateField.adjoin k <|
+    (frobenius (AlgebraicClosure k) p) ⁻¹' ((algebraMap k (AlgebraicClosure k)) '' S)
 
-lemma adjoin_pth_roots_purelyInseparable {k : Type} [Field k] (p : ℕ) (S : Finset k) [ExpChar k p] :
+lemma adjoin_pth_roots_of_finite_finite {k : Type} [Field k] (p : ℕ) (S : Set k) [Finite S]
+    (hp : p.Prime) [ExpChar k p] : FiniteDimensional k (adjoin_pth_roots p S) := by
+  have _ : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
+  have hFin : Finite ((frobenius (AlgebraicClosure k) p) ⁻¹'
+      ((algebraMap k (AlgebraicClosure k)) '' S)) := by
+    have hFin' : Finite ((algebraMap k (AlgebraicClosure k)) '' S) := by infer_instance
+    have hInj : Function.Injective (frobenius (AlgebraicClosure k) p) := frobenius_inj _ _
+    exact Set.Finite.preimage (Set.injOn_of_injective hInj) hFin'
+  apply IntermediateField.finiteDimensional_adjoin
+  intro s hs
+  apply IsIntegral.of_pow (n := p) (Nat.Prime.pos hp)
+  have hs_mem : s ^ p ∈ (algebraMap k (AlgebraicClosure k))'' S := by
+    simp_all only [Set.mem_preimage, Set.mem_image]
+    obtain ⟨w, hw⟩ := hs
+    use w
+    rw [hw.2]
+    exact ⟨hw.1, rfl⟩
+  simp only [Set.mem_image] at hs_mem
+  obtain ⟨y, hy⟩ := hs_mem
+  rw [← hy.2]
+  exact isIntegral_algebraMap
+
+lemma adjoin_pth_roots_purelyInseparable {k : Type} [Field k] (p : ℕ) (S : Set k) [ExpChar k p] :
     IsPurelyInseparable k (adjoin_pth_roots p S) := by
   unfold adjoin_pth_roots
   rw [IntermediateField.isPurelyInseparable_adjoin_iff_pow_mem k (AlgebraicClosure k) p]
   intro s hs
   use 1
-  simp_all only [Finset.coe_preimage, Finset.coe_image, Set.mem_preimage, Set.mem_image,
-    SetLike.mem_coe, pow_one, RingHom.mem_range]
+  simp_all only [Set.mem_preimage, Set.mem_image, pow_one, RingHom.mem_range]
   obtain ⟨w, h1, h2⟩ := hs
   use w
   rw [h2]
   rfl
 
-lemma adjoin_pth_roots_finite {k : Type} [Field k] (p : ℕ) (S : Finset k) (hp : p.Prime)
-    [ExpChar k p] : FiniteDimensional k (adjoin_pth_roots p S) := by
-  apply IntermediateField.finiteDimensional_adjoin
-  intro s hs
-  apply IsIntegral.of_pow (n := p) (Nat.Prime.pos hp)
-  have hs_mem : s ^ p ∈ (algebraMap k (AlgebraicClosure k))'' S := by
-    simp_all only [Finset.coe_preimage, Finset.coe_image, Set.mem_preimage, Set.mem_image,
-      SetLike.mem_coe]
-    obtain ⟨w, hw⟩ := hs
-    use w
-    rw [hw.2]
-    exact ⟨hw.1, rfl⟩
-  simp only [Set.mem_image, SetLike.mem_coe] at hs_mem
-  obtain ⟨y, hy⟩ := hs_mem
-  rw [← hy.2]
-  exact isIntegral_algebraMap
-
-lemma adjoin_pth_roots_frob_img_mem {k : Type} [Field k] (p : ℕ) (S : Finset k) [ExpChar k p]
+lemma adjoin_pth_roots_frob_img_mem {k : Type} [Field k] (p : ℕ) (S : Set k) [ExpChar k p]
     (y : k) (hy : y ∈ S) :
-    letI : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
+    have _ : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
     algebraMap k (AlgebraicClosure k) y ∈ Subfield.map (frobenius (AlgebraicClosure k) p)
       (adjoin_pth_roots p S).toSubfield := by
   unfold adjoin_pth_roots
-  letI : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
+  have _ : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
   use (frobeniusEquiv (AlgebraicClosure k) p).invFun (algebraMap k _ y)
-  simp only [Finset.coe_preimage, Finset.coe_image, adjoin_toSubfield,
-    Subsemiring.coe_carrier_toSubmonoid, Subring.coe_toSubsemiring, Subfield.coe_toSubring,
-    SetLike.mem_coe]
-  simp only [RingEquiv.toEquiv_eq_coe, Equiv.invFun_as_coe]
+  simp only [adjoin_toSubfield, Subsemiring.coe_carrier_toSubmonoid, Subring.coe_toSubsemiring,
+    Subfield.coe_toSubring, SetLike.mem_coe, ← coe_frobeniusEquiv]
+  refine ⟨?_, by simp⟩
+  apply Subfield.mem_closure_of_mem
+  right
+  use y
+  refine ⟨hy, ?_⟩
+  simp
+
+-- a somewhat relative version of adjoin_pth_roots_frob_img_mem, which allows for
+-- adjoin_pth_roots to be embedded in the algebraic closure of a bigger field.
+lemma adjoin_pth_roots_frob_img_mem' {k : Type} [Field k] (K : Type) [Field K] [Algebra k K] (p : ℕ)
+    (S : Set k) [ExpChar k p] (y : K) (hy : y ∈ (algebraMap k K) '' S) :
+    have _ : ExpChar (AlgebraicClosure K) p := ExpChar.of_injective_algebraMap' k _
+    algebraMap K (AlgebraicClosure K) y ∈ Subfield.map (frobenius (AlgebraicClosure K) p)
+      ((adjoin_pth_roots p S).map IsAlgClosed.lift).toSubfield := by
+  have _ : ExpChar (AlgebraicClosure K) p := ExpChar.of_injective_algebraMap' k _
+  unfold adjoin_pth_roots
+  rw [Subfield.mem_map]
+  use (frobeniusEquiv (AlgebraicClosure K) p).invFun (algebraMap K _ y)
+  simp only [← coe_frobeniusEquiv]
+  refine ⟨?_, by simp⟩
+  unfold IntermediateField.adjoin
+  simp only [coe_frobeniusEquiv, toSubfield_map, RingEquiv.toEquiv_eq_coe, Equiv.invFun_as_coe,
+    Subfield.mem_map, mem_toSubfield, mem_mk, Subring.mem_toSubsemiring, Subfield.mem_toSubring,
+    RingHom.coe_coe]
+  have _ : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
+  obtain ⟨z, hz⟩ := (Set.mem_image _ _ _).mp hy
+  use (frobeniusEquiv (AlgebraicClosure k) p).invFun (algebraMap k _ z)
   constructor
-  · sorry
-  ·
-    sorry
+  · apply Subfield.mem_closure_of_mem
+    simp only [RingEquiv.toEquiv_eq_coe, Equiv.invFun_as_coe, Set.mem_union, Set.mem_range,
+      Set.mem_preimage, Set.mem_image]
+    right
+    use z
+    refine ⟨hz.1, ?_⟩
+    rw [← coe_frobeniusEquiv]
+    simp
+  · rw [← hz.2]
+    simp only [RingEquiv.toEquiv_eq_coe, Equiv.invFun_as_coe]
+    have hVeryStupid : IsAlgClosed.lift (R := k) (S := AlgebraicClosure k)
+        ((EquivLike.toEquiv (frobeniusEquiv (AlgebraicClosure k) p)).symm
+          ((algebraMap k (AlgebraicClosure k)) z))
+        = (IsAlgClosed.lift (R := k) (S := AlgebraicClosure k) (M := AlgebraicClosure K)).toRingHom
+          (((frobeniusEquiv (AlgebraicClosure k) p)).symm
+            ((algebraMap k (AlgebraicClosure k)) z)) := by
+      simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_coe]
+      rfl
+    rw [hVeryStupid]
+    rw [RingHom.map_frobeniusEquiv_symm]
+    simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_coe, AlgHom.commutes]
+    rfl
 
 def k'_of_S (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
     (S : Finset (IntermediateField.adjoin k (x '' ⊤))) (p : ℕ) [ExpChar k p] :
@@ -321,23 +375,41 @@ def image_of_transcendence_basis (k K : Type) [Field k] [Field K] [Algebra k K] 
 def k_transcendental_pth_roots (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
     [Fintype ι] (p : ℕ) [ExpChar k p] : IntermediateField ((IntermediateField.adjoin k (x '' ⊤)))
       (AlgebraicClosure K) :=
-  letI : NoZeroSMulDivisors ((IntermediateField.adjoin k (x '' ⊤)))
+  have _ : NoZeroSMulDivisors ((IntermediateField.adjoin k (x '' ⊤)))
     (AlgebraicClosure (IntermediateField.adjoin k (x '' ⊤))) := GroupWithZero.toNoZeroSMulDivisors
-  letI : NoZeroSMulDivisors ((IntermediateField.adjoin k (x '' ⊤))) (AlgebraicClosure K) :=
+  have _ : NoZeroSMulDivisors ((IntermediateField.adjoin k (x '' ⊤))) (AlgebraicClosure K) :=
     GroupWithZero.toNoZeroSMulDivisors
   (adjoin_pth_roots p (image_of_transcendence_basis k K x)).map IsAlgClosed.lift
 
 lemma k_transcendental_pth_roots_pth_root_mem (k K : Type) [Field k] [Field K] [Algebra k K]
     {ι : Type} (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p] (i : ι) :
-    letI : ExpChar (AlgebraicClosure K) p := ExpChar.of_injective_algebraMap' k _
+    have _ : ExpChar (AlgebraicClosure K) p := ExpChar.of_injective_algebraMap' k _
     algebraMap K (AlgebraicClosure K) (x i) ∈ Subfield.map (frobenius (AlgebraicClosure K) p)
         (k_transcendental_pth_roots k K x p).toSubfield := by
-  simp only [Set.top_eq_univ, Subfield.mem_map, mem_toSubfield]
-  unfold k_transcendental_pth_roots
+  -- unfold k_transcendental_pth_roots
+  apply adjoin_pth_roots_frob_img_mem'
+  simp [Set.top_eq_univ, IntermediateField.algebraMap_apply, image_of_transcendence_basis,
+    Set.image_univ, Set.coe_toFinset, Set.mem_image, Set.mem_range, exists_exists_eq_and,
+    exists_apply_eq_apply]
+
+
+-- TODO: define the new transcendence basis x' : ι → k_transcendental_pth_roots by taking the pth
+-- roots of the `x i`, and show that this is again a transcendence basis. Hopefully we can use
+-- something like isTranscendenceBasis_equiv.
+def x' (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
+    (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p] : ι → k_transcendental_pth_roots k K x p :=
+  have _ : ExpChar (AlgebraicClosure K) p := ExpChar.of_injective_algebraMap' k _
+  fun i => ⟨(frobeniusEquiv (AlgebraicClosure K) p).invFun ∘
+      (algebraMap K (AlgebraicClosure K)) ∘ x <| i,
+      sorry⟩
+  /- fun i => ⟨(frobeniusEquiv (AlgebraicClosure K) p).invFun <|
+    algebraMap K (AlgebraicClosure K) <| x i, sorry⟩-/
+
+lemma x'_transcendental_basis (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
+    [Fintype ι] (p : ℕ) [ExpChar k p] (hT : IsTranscendenceBasis k x) :
+    IsTranscendenceBasis k (x' k K x p) := by
 
   sorry
-
-
 
 def k'_transcendental_pth_roots (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
     (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p]
