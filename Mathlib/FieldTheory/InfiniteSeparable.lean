@@ -386,12 +386,27 @@ lemma k_transcendental_pth_roots_pth_root_mem (k K : Type) [Field k] [Field K] [
     have _ : ExpChar (AlgebraicClosure K) p := ExpChar.of_injective_algebraMap' k _
     algebraMap K (AlgebraicClosure K) (x i) ∈ Subfield.map (frobenius (AlgebraicClosure K) p)
         (k_transcendental_pth_roots k K x p).toSubfield := by
-  -- unfold k_transcendental_pth_roots
   apply adjoin_pth_roots_frob_img_mem'
   simp [Set.top_eq_univ, IntermediateField.algebraMap_apply, image_of_transcendence_basis,
     Set.image_univ, Set.coe_toFinset, Set.mem_image, Set.mem_range, exists_exists_eq_and,
     exists_apply_eq_apply]
 
+-- The isomorphism k(x_i) ≃ k(x_i^{1/p}), which identifies the x_i with the x_i^{1/p}
+def k_transcendental_pth_roots_equiv (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
+    (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p] (hT : IsTranscendenceBasis k x) :
+    IntermediateField.adjoin k (x '' ⊤) ≃+* k_transcendental_pth_roots k K x p := by
+  sorry
+
+
+lemma intermediateField_symm_mem_iff {k K L : Type} [Field k] [Field K] [Field L] (f : K ≃+* L)
+    [Algebra k K] (k' : IntermediateField k K) (y : L) :
+    f.symm y ∈ k' ↔ y ∈ Subfield.map f k'.toSubfield := by
+  erw [Subring.mem_map_equiv]
+  simp
+
+def x_res (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) [Fintype ι] (p : ℕ)
+    [ExpChar k p] : ι → IntermediateField.adjoin k (x '' ⊤) :=
+  fun i => ⟨x i, by sorry⟩
 
 -- TODO: define the new transcendence basis x' : ι → k_transcendental_pth_roots by taking the pth
 -- roots of the `x i`, and show that this is again a transcendence basis. Hopefully we can use
@@ -399,16 +414,32 @@ lemma k_transcendental_pth_roots_pth_root_mem (k K : Type) [Field k] [Field K] [
 def x' (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
     (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p] : ι → k_transcendental_pth_roots k K x p :=
   have _ : ExpChar (AlgebraicClosure K) p := ExpChar.of_injective_algebraMap' k _
-  fun i => ⟨(frobeniusEquiv (AlgebraicClosure K) p).invFun ∘
-      (algebraMap K (AlgebraicClosure K)) ∘ x <| i,
-      sorry⟩
-  /- fun i => ⟨(frobeniusEquiv (AlgebraicClosure K) p).invFun <|
-    algebraMap K (AlgebraicClosure K) <| x i, sorry⟩-/
+  fun i => ⟨(frobeniusEquiv (AlgebraicClosure K) p).symm ∘
+      (algebraMap K (AlgebraicClosure K)) ∘ x <| i, by
+        simp only [Set.top_eq_univ, Function.comp_apply, intermediateField_symm_mem_iff]
+        apply k_transcendental_pth_roots_pth_root_mem⟩
+
+-- The map k(x_i^{1/p}) →+* k(x_i) which raises everything to the pth power.
+def x_x'_frob (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) [Fintype ι]
+    (p : ℕ) [ExpChar k p] : k_transcendental_pth_roots k K x p →+*
+      IntermediateField.adjoin k (x '' ⊤) := sorry
+  -- RingHom.codRestrict (frobenius (k_transcendental_pth_roots k K x p) p) (IntermediateField.adjoin k ((x_res k K x p) '' ⊤)) sorry
+
+
+lemma x'_AlgebraicIndependent (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
+    [Fintype ι] (p : ℕ) [ExpChar k p] (hA : AlgebraicIndependent k x) :
+    AlgebraicIndependent k (x' k K x p) := by
+  have hA' : AlgebraicIndependent k ((x_x'_frob k K x p) ∘ x' k K x p) := sorry
+  exact AlgebraicIndependent.of_ringHom_of_comp_eq (frobenius k p) (x_x'_frob k K x p) hA'
+      (frobenius_inj k p) sorry
+
 
 lemma x'_transcendental_basis (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
     [Fintype ι] (p : ℕ) [ExpChar k p] (hT : IsTranscendenceBasis k x) :
     IsTranscendenceBasis k (x' k K x p) := by
-
+  unfold x'
+  simp only [Set.top_eq_univ, Function.comp_apply]
+  -- maybe use something like  algebraicIndependent_adjoin
   sorry
 
 def k'_transcendental_pth_roots (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
@@ -486,20 +517,30 @@ theorem X_pow_sub_C_separable_iff {F : Type} [Field F] {n : ℕ} (x : F) (hn : n
   have hDeg : (X ^ n - C x).natDegree = n := by simp
   exact not_isUnit_of_natDegree_pos (X ^ n - C x) (hDeg.symm ▸ hn) h
 
-open Classical in
+-- The minimal polynomial of a non pth power in a field of characteristic p is X ^ p - C α
+lemma minpoly_of_non_pth_power {k K : Type} [Field k] [Field K] [Algebra k K] {p : ℕ} {α : k}
+    (hp : p.Prime) [ExpChar k p] (hα : ¬ ∃ β : k, β ^ p = α) (ρ : K)
+    (hρ : ρ ^ p = algebraMap k K α) :
+    X ^ p - C α = minpoly k ρ := by
+  have hIrred : Irreducible (X ^ p - C α) := by
+    apply X_pow_sub_C_irreducible_of_prime hp
+    tauto
+  apply minpoly.eq_of_irreducible_of_monic hIrred
+  · simp [hρ]
+  · have hDeg : (X ^ p - C α).natDegree = p := by simp
+    simp [Monic.def, leadingCoeff, hDeg,
+            Polynomial.coeff_C_ne_zero (Nat.ne_zero_of_lt <| Nat.Prime.pos hp)]
+
 @[stacks 031V "(2)"]
 lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K]
     [Algebra.IsAlgebraic k K] [Algebra.IsSeparable k K] (α : K) (P : Polynomial k)
     (hP : P.aeval α = 0) (p : ℕ) (hp : p.Prime) [CharP k p] [ExpChar k p]
-    (h_pth_power_coeff : ∃ Q : Polynomial k, P = Polynomial.map (frobenius k p) Q)
-    (h_noDup : P.Separable) :
+    (hQfrob_eq_P : ∃ Q : Polynomial k, P = Polynomial.map (frobenius k p) Q)
+    (hSep : P.Separable) :
     ∃ β : K, β ^ p = α := by
   by_cases hα : ∃ β : K, β ^ p = α
-  · tauto
-  · have hIrred : Irreducible (X ^ p - C α) := by
-      apply X_pow_sub_C_irreducible_of_prime hp
-      tauto
-    obtain ⟨Q, hQ⟩ := h_pth_power_coeff
+  · assumption
+  · obtain ⟨Q, hQ⟩ := hQfrob_eq_P
     obtain ⟨ρ, hρ⟩ := IsAlgClosed.exists_pow_nat_eq (algebraMap K (AlgebraicClosure K) α)
       (Nat.Prime.pos hp)
     have QX_pow_p_dvd : (X ^ p - C α) ∣ Polynomial.mapAlg k K Q := by
@@ -508,8 +549,7 @@ lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K
       have hRoot : aeval ρ (X ^ p - C α) = 0 ∧ aeval ρ Q = 0 := by
         constructor
         · simp [hρ]
-        · haveI : ExpChar (AlgebraicClosure K) p := by
-            apply ExpChar.of_injective_algebraMap' k
+        · have _ : ExpChar (AlgebraicClosure K) p := ExpChar.of_injective_algebraMap' k _
           have hFrob : frobenius (AlgebraicClosure K) p ((aeval ρ) Q) = 0 := by
             rw [← Polynomial.eval_map_algebraMap, ← Polynomial.eval₂_at_apply, frobenius_def, hρ,
                 Polynomial.eval₂_map, ← RingHom.frobenius_comm, ← Polynomial.eval₂_map, ← hQ,
@@ -517,47 +557,64 @@ lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K
             exact hP
           subst hQ
           simp_all only [not_exists, map_eq_zero]
-      have hMinPoly : X ^ p - C α = minpoly K ρ := by
-        apply minpoly.eq_of_irreducible_of_monic hIrred
-        · simp [hρ]
-        · have hDeg : (X ^ p - C α).natDegree = p := by simp
-          rw [Monic.def]
-          unfold leadingCoeff
-          rw [hDeg]
-          have hPos := Nat.Prime.pos hp
-          simp only [coeff_sub, coeff_X_pow, ↓reduceIte, sub_eq_self]
-          exact Polynomial.coeff_C_ne_zero (Nat.ne_zero_of_lt hPos)
-      rw [hMinPoly]
+      have _ : ExpChar K p := ExpChar.of_injective_algebraMap' k _
+      rw [minpoly_of_non_pth_power hp hα ρ hρ]
       apply minpoly.dvd
       rw [← hRoot.2, mapAlg_eq_map, aeval_map_algebraMap]
-    have hSep : (mapAlg k K Q).Separable := by
-      rw [hQ] at h_noDup
-      exact Polynomial.Separable.map ((Polynomial.separable_map _).mp h_noDup)
-    apply Polynomial.Separable.of_dvd hSep at QX_pow_p_dvd
+    have hQSep : (mapAlg k K Q).Separable :=
+      Polynomial.Separable.map ((Polynomial.separable_map _).mp (hQ ▸ hSep))
+    apply Polynomial.Separable.of_dvd hQSep at QX_pow_p_dvd
     have hαUnit : IsUnit α := by
       rw [isUnit_iff_ne_zero]
       by_contra hzero
-      rw [hzero] at hα
-      exact (hα (by use 0; exact zero_pow (pos_iff_ne_zero.mp (Nat.Prime.pos hp))))
-    have hThm := not_iff_not.mpr (X_pow_sub_C_separable_iff α (Nat.Prime.pos hp) hαUnit)
+      exact ((hzero ▸ hα) (by use 0; exact zero_pow (pos_iff_ne_zero.mp (Nat.Prime.pos hp))))
+    have hInsep_iff_p_ne_zero := ((ne_eq _ _) ▸
+      (not_iff_not.mpr (X_pow_sub_C_separable_iff α (Nat.Prime.pos hp) hαUnit))).trans (not_not)
     have hpzero : (p : K) = 0 := by
       rw [← (CharP.charP_iff_prime_eq_zero hp), ← Algebra.charP_iff k K p]
       assumption
     exfalso
-    simp only [ne_eq, Decidable.not_not] at hThm
-    exact hThm.mpr hpzero QX_pow_p_dvd
+    exact hInsep_iff_p_ne_zero.mpr hpzero QX_pow_p_dvd
 
 @[stacks 031V "(1)"]
 lemma pth_power_poly_imp_pth_power' (k K : Type) [Field k] [Field K] [Algebra k K]
-    [Algebra.IsAlgebraic k K] [hASep : Algebra.IsSeparable k K] (α : K) (p : ℕ) (hp : p.Prime)
+    [Algebra.IsAlgebraic k K] [hSep : Algebra.IsSeparable k K] (α : K) (p : ℕ) (hp : p.Prime)
     [ExpChar k p] [CharP k p]
     (h_pth_power_coeff : ∃ Q : Polynomial k, ((minpoly k α)) = Polynomial.map (frobenius k p) Q) :
     ∃ β : K, β ^ p = α :=
   pth_power_poly_imp_pth_power k K α (minpoly k α) (minpoly.aeval k α) p hp h_pth_power_coeff
-    ((Algebra.isSeparable_def k K).mp hASep α)
+    ((Algebra.isSeparable_def k K).mp hSep α)
 
 
 
+
+open TensorProduct
+variable (R S : Type) [Field R] [Field S] [Algebra R S]
+variable (M : Type) [AddCommGroup M] [Module R M]
+
+example : Module.finrank S (S ⊗[R] M) = Module.finrank R M := by
+  exact Module.finrank_baseChange
+
+variable {k K : Type} [Field k] [Field K] [Algebra k K]
+variable (L1 L2 : IntermediateField k K)
+
+instance : Algebra L1 (L1 ⊔ L2 : IntermediateField k K) := RingHom.toAlgebra
+      (IntermediateField.inclusion le_sup_left).toRingHom
+
+
+def map_to_compositum : L1 ⊗[k] L2 →ₐ[L1] (L1 ⊔ L2 : IntermediateField k K) :=
+  LinearMap.liftBaseChange (IntermediateField.inclusion le_sup_left)
+
+lemma map_to_compositum.surjective : Function.Surjective (map_to_compositum L1 L2) := by
+  sorry
+
+-- some prerequisites on the degree in a compositum that we need
+lemma compositum_deg_le (L1 L2 : IntermediateField k K) (hFin : Module.Finite k L2) :
+    letI : Module L1 (L1 ⊔ L2 : IntermediateField k K) := RingHom.toModule
+      (IntermediateField.inclusion le_sup_left).toRingHom
+    Module.finrank L1 (L1 ⊔ L2 : IntermediateField k K) ≤ Module.finrank k L2 := by
+
+  sorry
 
 
 
