@@ -194,8 +194,23 @@ Elementary needed statements:
 open Polynomial
 open IntermediateField
 
-def Ksep (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K) :=
+def Ksep (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) :=
   separableClosure (IntermediateField.adjoin k (x '' ⊤)) K
+
+example (k K : Type) [Field k] [Field K] [Algebra k K] (h : Module.finrank k K > 1) :
+    K ≠ (algebraMap k K).range := by
+
+  sorry
+
+example (k K : Type) [Field k] [Field K] [Algebra k K] (h : Module.finrank k K > 1) :
+    ∃ x : K, x ∉ (algebraMap k K).range := by
+
+  sorry
+
+def beta_of_FGExtension {k K : Type} [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
+    (hDeg : Module.finrank (separableClosure (IntermediateField.adjoin k (x '' ⊤)) K) K > 1) : K :=
+
+  sorry
 
 def P_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K) (β : K) :
     Polynomial (IntermediateField.adjoin k (x '' ⊤)) :=
@@ -589,44 +604,53 @@ lemma pth_power_poly_imp_pth_power' (k K : Type) [Field k] [Field K] [Algebra k 
 
 
 open TensorProduct
-variable (R S : Type) [Field R] [Field S] [Algebra R S]
-variable (M : Type) [AddCommGroup M] [Module R M]
 
-example : Module.finrank S (S ⊗[R] M) = Module.finrank R M := by
-  exact Module.finrank_baseChange
+
+variable (k R : Type) [CommRing k] [CommRing R] [Algebra k R] (A B : Subalgebra k R)
+instance : Algebra A (A ⊔ B : Subalgebra k R) :=
+    RingHom.toAlgebra (Subalgebra.inclusion le_sup_left).toRingHom
+
+lemma sup_eq_adjoin :
+    (A ⊔ B : Subalgebra k R) = Subalgebra.restrictScalars k (Algebra.adjoin A (B : Set R)) := by
+  rw [Algebra.sup_def]
+  rw [Algebra.adjoin_union_eq_adjoin_adjoin]
+  rw [Algebra.adjoin_eq]
+
+example :
+    (A ⊔ B : Subalgebra k R) ≃ₐ[A] (Algebra.adjoin A (B : Set R)) := by
+
+  sorry
 
 variable {k K : Type} [Field k] [Field K] [Algebra k K]
 variable (L1 L2 : IntermediateField k K)
 
-instance : Algebra L1 (L1 ⊔ L2 : IntermediateField k K) := RingHom.toAlgebra
-      (IntermediateField.inclusion le_sup_left).toRingHom
+instance : Module L1 (L1 ⊔ L2 : IntermediateField k K) := RingHom.toModule
+    (IntermediateField.inclusion le_sup_left).toRingHom
 
-
-def map_to_compositum : L1 ⊗[k] L2 →ₐ[L1] (L1 ⊔ L2 : IntermediateField k K) :=
-  LinearMap.liftBaseChange (IntermediateField.inclusion le_sup_left)
-
-lemma map_to_compositum.surjective : Function.Surjective (map_to_compositum L1 L2) := by
-  sorry
 
 -- some prerequisites on the degree in a compositum that we need
-lemma compositum_deg_le (L1 L2 : IntermediateField k K) (hFin : Module.Finite k L2) :
-    letI : Module L1 (L1 ⊔ L2 : IntermediateField k K) := RingHom.toModule
-      (IntermediateField.inclusion le_sup_left).toRingHom
-    Module.finrank L1 (L1 ⊔ L2 : IntermediateField k K) ≤ Module.finrank k L2 := by
+lemma compositum_deg_le (L1 L2 : IntermediateField k K) (hAlg : Algebra.IsAlgebraic k L2) :
+    Module.rank L1 (L1 ⊔ L2 : IntermediateField k K) ≤ Module.rank k L2 := by
+  let isom : (L1 ⊔ L2 : IntermediateField k K) ≃ₗ[L1]
+      (IntermediateField.adjoin L1 (L2 : Set K)) := by
 
-  sorry
+    -- simp only [IntermediateField.sup_def]
+    -- rw [← IntermediateField.adjoin_adjoin_left]
+    sorry
+  have hRankEq : Module.rank L1 (L1 ⊔ L2 : IntermediateField k K) =
+      Module.rank L1 (IntermediateField.adjoin L1 (L2 : Set K)) := LinearEquiv.rank_eq isom
+  rw [hRankEq]
+  exact IntermediateField.adjoin_rank_le_of_isAlgebraic_right _ _
+
+
+example (R : Type) [CommRing R] (M N : Type) [AddCommMonoid M] [AddCommMonoid N] [Module R M]
+    [Module R N] (f : M ≃ₗ[R] N) : Module.rank R M = Module.rank R N := by
+  exact LinearEquiv.rank_eq f
 
 
 
-
+-- Note: See valuative criterion squares for inspiration.
 open CategoryTheory
-
-variable (k : Type) [Field k]
-variable (S : CategoryTheory.Square FieldCat)
-variable (K : Type) [Field K]
-variable (f : k →+* K) (h : RingHom.EssFiniteType f)
-instance : Algebra k K := f.toAlgebra
-
 
 def RingHom.IsPurelyInseparable' {R S : Type} [CommRing R] [CommRing S] (f : R →+* S) : Prop :=
   @IsPurelyInseparable R S _ _ f.toAlgebra
@@ -659,55 +683,100 @@ def RingHom.separableDegree_of_transcendenceBasis {k K : Type} [Field k] [Field 
   @Algebra.separableDegree_of_transcendenceBasis k K _ _ f.toAlgebra _ x hf
 
 
--- This is the type of square we seek
-def IsExtensionSquare (S : CategoryTheory.Square FieldCat) : Prop :=
-  S.f₁₂.hom'.IsPurelyInseparable' ∧ S.f₁₃ = Arrow.mk (FieldCat.ofHom f) ∧
-  @RingHom.IsSeparablyGenerated S.X₂ S.X₄ _ _ S.f₂₄.hom'
+structure inseparable_separable_extension {k K : Type} [Field k] [Field K] [Algebra k K]
+    [Algebra.EssFiniteType k K] where
+  k' : Type
+  [fieldk' : Field k']
+  K' : Type
+  [fieldK' : Field K']
+  [alg' : Algebra k' K']
+  fk : k →+* k'
+  fK : K →+* K'
+  commSq : CommSq (CommRingCat.ofHom fk) (CommRingCat.ofHom (algebraMap k K))
+      (CommRingCat.ofHom (algebraMap k' K')) (CommRingCat.ofHom fK)
+  purelyInsep : fk.IsPurelyInseparable'
+  separablyGen : (algebraMap k' K').IsSeparablyGenerated -- TODO: this is ugly!
 
 
-lemma ExtensionSquareX₁ (hE : IsExtensionSquare k K f S) : S.X₁ = k := by
-  obtain ⟨_, hA, _⟩ := hE
-  rw [Arrow.mk_eq_mk_iff] at hA
-  obtain ⟨hX, _⟩ := hA
-  simp_all only
+structure partial_inseparable_separable_extension (k K : Type) [Field k] [Field K] [Algebra k K]
+    [Algebra.EssFiniteType k K] (d : ℕ) {ι : Type} (x : ι → K) (hx : IsTranscendenceBasis k x)
+    where
+  -- The commutative square of fields
+  k' : Type
+  [fieldk' : Field k']
+  K' : Type
+  [fieldK' : Field K']
+  [alg' : Algebra k' K']
+  fk : k →+* k'
+  fK : K →+* K'
+  commSq : CommSq (CommRingCat.ofHom fk) (CommRingCat.ofHom (algebraMap k K))
+      (CommRingCat.ofHom (algebraMap k' K')) (CommRingCat.ofHom fK)
 
-lemma ExtensionSquareX₃ (hE : IsExtensionSquare k K f S) : S.X₃ = K := by
-  obtain ⟨_, hA, _⟩ := hE
-  rw [Arrow.mk_eq_mk_iff] at hA
-  obtain ⟨hX, hY, _⟩ := hA
-  simp_all only
+  -- The new transcendence basis
+  x' : ι → K'
+  hx' : IsTranscendenceBasis k' x'
 
+  -- The properties that need to be satisfied:
+  d' : ℕ
+  hdd' : d' < d
+  purelyInsep : fk.IsPurelyInseparable'
+  insepDeg_eq_d : d = Module.finrank k (Ksep k K x)
+  insepDeg_eq_d' : d' = Module.finrank k' (Ksep k' K' x')
 
-/-
-lemma ExtensionSquare_right_of_purely_inseparable_isExtensionSquare {k K : Type} (f : k →+* K)
-    (Sl Sr : Square FieldCat) (hInsep : Sl.f₁₂.hom'.IsPurelyInseparable Sl.f₁₂)
-    (hExt : IsExtensionSquare _ _ _ _ Sr) : IsExtensionSquare CategoryTheory.CommSq.horiz_comp
--/
+instance (k K : Type) [Field k] [Field K] [Algebra k K] [Algebra.EssFiniteType k K] (d : ℕ)
+    {ι : Type} (x : ι → K) (hx : IsTranscendenceBasis k x)
+    (S : partial_inseparable_separable_extension k K d x hx) : Field S.k' := S.fieldk'
 
--- Final goal:
-theorem exists_ExtensionSquare : ∃ Sq : CategoryTheory.Square FieldCat,
-    IsExtensionSquare k K f Sq := by sorry
+instance (k K : Type) [Field k] [Field K] [Algebra k K] [Algebra.EssFiniteType k K] (d : ℕ)
+    {ι : Type} (x : ι → K) (hx : IsTranscendenceBasis k x)
+    (S : partial_inseparable_separable_extension k K d x hx) : Field S.K' := S.fieldK'
 
+instance (k K : Type) [Field k] [Field K] [Algebra k K] [Algebra.EssFiniteType k K] (d : ℕ)
+    {ι : Type} (x : ι → K) (hx : IsTranscendenceBasis k x)
+    (S : partial_inseparable_separable_extension k K d x hx) : Algebra S.k' S.K' := S.alg'
 
--- Then have some basic API theorems, such as horizontal and vertical compositions of extension
--- squares are again an extension square. After that, build the functions needed to inductively
--- build an extension square out of a morphism of Fields of Essentially Finite Type.
+instance partial_inseparable_separable_extension_right_EssFiniteType (k K : Type) [Field k]
+    [Field K] [Algebra k K] [Algebra.EssFiniteType k K] (d : ℕ) {ι : Type} (x : ι → K)
+    (hx : IsTranscendenceBasis k x) (sq : partial_inseparable_separable_extension k K d x hx) :
+    Algebra.EssFiniteType sq.k' sq.K' := by
+  sorry
 
-example (f : k →+* K) : k ⟶ K := SemiRingCat.ofHom f
+def glue_partial_inseparable_separable_extension {k K : Type} [Field k] [Field K] [Algebra k K]
+    [Algebra.EssFiniteType k K] (d : ℕ) {ι : Type} (x : ι → K) (hx : IsTranscendenceBasis k x)
+    (left_ext : partial_inseparable_separable_extension k K d x hx)
+    (right_ext : partial_inseparable_separable_extension left_ext.k' left_ext.K' left_ext.d'
+        left_ext.x' left_ext.hx') :
+  partial_inseparable_separable_extension k K d x hx
+  := {
+    k' := right_ext.k'
+    K' := right_ext.K'
+    fk := RingHom.comp right_ext.fk left_ext.fk
+    fK := RingHom.comp right_ext.fK left_ext.fK
+    commSq := CategoryTheory.CommSq.horiz_comp left_ext.commSq right_ext.commSq
+    x' := right_ext.x'
+    hx' := right_ext.hx'
+    d' := right_ext.d'
+    hdd' := lt_trans right_ext.hdd' left_ext.hdd'
+    purelyInsep := purelyInseparable_comp _ _ left_ext.purelyInsep right_ext.purelyInsep
+    insepDeg_eq_d := left_ext.insepDeg_eq_d
+    insepDeg_eq_d' := right_ext.insepDeg_eq_d'
+  }
 
-
-variable (C : Type) [Category C] {X Y : C} (f : X ⟶ Y)
-variable (Sq : Square C)
-variable (A B : Arrow C)
-
-example (h : A = B) : A.left = B.left := by exact congrArg Comma.left h
-
-variable (S1 S2 : Square FieldCat)
-variable (hGlue : Arrow.mk S1.f₂₄ = Arrow.mk S2.f₁₃)
-
-
-#check Square.mk
--- #check CategoryTheory.CommSq.horiz_comp (Square.commSq S1) (Square.commSq S2)
-
-variable (ι : Type) (x : ι → K) [Algebra k K]
-variable (h : IsTranscendenceBasis k x)
+-- given a finitely generated field extension, give a partial inseparable separable
+-- extension square of it
+def partial_extension_square_of_FGExtension {k K : Type} [Field k] [Field K] [Algebra k K]
+    [Algebra.EssFiniteType k K] (d : ℕ) {ι : Type} (x : ι → K) (hx : IsTranscendenceBasis k x) :
+    partial_inseparable_separable_extension k K d x hx := {
+      k' := _
+      K' := _
+      fk := _
+      fK := _
+      commSq := _
+      x' := _
+      hx' := _
+      d' := _
+      hdd' := _
+      purelyInsep := _
+      insepDeg_eq_d := _
+      insepDeg_eq_d' := _
+    }
