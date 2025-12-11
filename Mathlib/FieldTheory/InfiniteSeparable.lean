@@ -197,6 +197,14 @@ open IntermediateField
 def Ksep (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) :=
   separableClosure (IntermediateField.adjoin k (x '' ⊤)) K
 
+/-
+example (K : Type) [Field K] (k : Subfield K) (h : Module.finrank k K > 1) :
+    K ≠ k := by
+  by_contra hContra
+  have h' : 2 ≤ Module.finrank k K := h
+  rw [Module.le_rank_iff] at h'
+  sorry-/
+
 example (k K : Type) [Field k] [Field K] [Algebra k K] (h : Module.finrank k K > 1) :
     K ≠ (algebraMap k K).range := by
 
@@ -523,7 +531,7 @@ lemma P_is_pth_power_k'_transcendental (k K : Type) [Field k] [Field K] [Algebra
 
 -- TODO: place this in a different file, it generalizes X_pow_sub_one_separable_iff (but does
 -- require the extra assumption that n is not zero, so it is not a complete generalization)
-theorem X_pow_sub_C_separable_iff {F : Type} [Field F] {n : ℕ} (x : F) (hn : n > 0)
+theorem X_pow_sub_C_separable_iff {F : Type*} [Field F] {n : ℕ} (x : F) (hn : n > 0)
     (hx : IsUnit x) : (X ^ n - C x : F[X]).Separable ↔ (n : F) ≠ 0 := by
   refine ⟨?_, fun h => separable_X_pow_sub_C_unit hx.unit (IsUnit.mk0 _ h)⟩
   rw [separable_def', derivative_sub, derivative_X_pow, derivative_C, sub_zero]
@@ -533,7 +541,7 @@ theorem X_pow_sub_C_separable_iff {F : Type} [Field F] {n : ℕ} (x : F) (hn : n
   exact not_isUnit_of_natDegree_pos (X ^ n - C x) (hDeg.symm ▸ hn) h
 
 -- The minimal polynomial of a non pth power in a field of characteristic p is X ^ p - C α
-lemma minpoly_of_non_pth_power {k K : Type} [Field k] [Field K] [Algebra k K] {p : ℕ} {α : k}
+lemma minpoly_of_non_pth_power {k K : Type*} [Field k] [Field K] [Algebra k K] {p : ℕ} {α : k}
     (hp : p.Prime) [ExpChar k p] (hα : ¬ ∃ β : k, β ^ p = α) (ρ : K)
     (hρ : ρ ^ p = algebraMap k K α) :
     X ^ p - C α = minpoly k ρ := by
@@ -547,7 +555,7 @@ lemma minpoly_of_non_pth_power {k K : Type} [Field k] [Field K] [Algebra k K] {p
             Polynomial.coeff_C_ne_zero (Nat.ne_zero_of_lt <| Nat.Prime.pos hp)]
 
 @[stacks 031V "(2)"]
-lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K]
+lemma pth_power_poly_imp_pth_power {k K : Type*} [Field k] [Field K] [Algebra k K]
     [Algebra.IsAlgebraic k K] [Algebra.IsSeparable k K] (α : K) (P : Polynomial k)
     (hP : P.aeval α = 0) (p : ℕ) (hp : p.Prime) [CharP k p] [ExpChar k p]
     (hQfrob_eq_P : ∃ Q : Polynomial k, P = Polynomial.map (frobenius k p) Q)
@@ -592,12 +600,12 @@ lemma pth_power_poly_imp_pth_power (k K : Type) [Field k] [Field K] [Algebra k K
     exact hInsep_iff_p_ne_zero.mpr hpzero QX_pow_p_dvd
 
 @[stacks 031V "(1)"]
-lemma pth_power_poly_imp_pth_power' (k K : Type) [Field k] [Field K] [Algebra k K]
+lemma pth_power_poly_imp_pth_power' {k K : Type*} [Field k] [Field K] [Algebra k K]
     [Algebra.IsAlgebraic k K] [hSep : Algebra.IsSeparable k K] (α : K) (p : ℕ) (hp : p.Prime)
     [ExpChar k p] [CharP k p]
     (h_pth_power_coeff : ∃ Q : Polynomial k, ((minpoly k α)) = Polynomial.map (frobenius k p) Q) :
     ∃ β : K, β ^ p = α :=
-  pth_power_poly_imp_pth_power k K α (minpoly k α) (minpoly.aeval k α) p hp h_pth_power_coeff
+  pth_power_poly_imp_pth_power α (minpoly k α) (minpoly.aeval k α) p hp h_pth_power_coeff
     ((Algebra.isSeparable_def k K).mp hSep α)
 
 
