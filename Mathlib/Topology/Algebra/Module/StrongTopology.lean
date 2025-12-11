@@ -599,6 +599,14 @@ def toLinearMap₁₂ (L : E →SL[σ₁₃] F →SL[σ₂₃] G) : E →ₛₗ[
 @[simp] lemma toLinearMap₁₂_apply (L : E →SL[σ₁₃] F →SL[σ₂₃] G) (v : E) (w : F) :
     L.toLinearMap₁₂ v w = L v w := rfl
 
+lemma toLinearMap₁₂_injective :
+    (toLinearMap₁₂ (E := E) (F := F) (G := G) (σ₁₃ := σ₁₃) (σ₂₃ := σ₂₃)).Injective := by
+  simp [Function.Injective, LinearMap.ext_iff, ← ContinuousLinearMap.ext_iff]
+
+lemma toLinearMap₁₂_inj (L₁ L₂ : E →SL[σ₁₃] F →SL[σ₂₃] G) :
+    L₁.toLinearMap₁₂ = L₂.toLinearMap₁₂ ↔ L₁ = L₂ :=
+  toLinearMap₁₂_injective.eq_iff
+
 @[deprecated (since := "2025-07-28")] alias toLinearMap₂_apply := toLinearMap₁₂_apply
 
 /-- Send a continuous bilinear form to an abstract bilinear form (forgetting continuity). -/
@@ -606,6 +614,13 @@ def toBilinForm (L : E →L[𝕜] E →L[𝕜] 𝕜) : LinearMap.BilinForm 𝕜 
 
 @[simp] lemma toBilinForm_apply (L : E →L[𝕜] E →L[𝕜] 𝕜) (v : E) (w : E) :
     L.toBilinForm v w = L v w := rfl
+
+lemma toBilinForm_injective : (toBilinForm (𝕜 := 𝕜) (E := E)).Injective :=
+  toLinearMap₁₂_injective
+
+lemma toBilinForm_inj (L₁ L₂ : E →L[𝕜] E →L[𝕜] 𝕜) :
+    L₁.toBilinForm = L₂.toBilinForm ↔ L₁ = L₂ :=
+  toBilinForm_injective.eq_iff
 
 end BilinearMaps
 
@@ -704,6 +719,28 @@ def prodL : ((E →L[𝕜] F) × (E →L[𝕜] G)) ≃L[S] (E →L[𝕜] F × G)
 
 end Prod
 
+variable {𝕜 E : Type*} [NontriviallyNormedField 𝕜] [AddCommGroup E] [Module 𝕜 E]
+  [TopologicalSpace E] [IsTopologicalAddGroup E] [ContinuousSMul 𝕜 E]
+
+/-- `ContinuousLinearMap.toSpanSingleton` as a continuous linear equivalence. -/
+@[simps!]
+def toSpanSingletonCLE : E ≃L[𝕜] (𝕜 →L[𝕜] E) where
+  toLinearEquiv := toSpanSingletonLE ..
+  continuous_toFun := by
+    apply continuous_of_continuousAt_zero (toSpanSingletonLE _ _ _)
+    suffices ∀ s : Set 𝕜, IsVonNBounded 𝕜 s → ∀ U ∈ 𝓝 0, ∀ᶠ (a : E) in 𝓝 0, ∀ x ∈ s, x • a ∈ U by
+      simpa [ContinuousAt, ContinuousLinearMap.nhds_zero_eq, MapsTo]
+    intro s hsb U hU
+    rcases mem_nhds_prod_iff.mp <| continuous_smul.tendsto' (0 : 𝕜 × E) 0 (by simp) hU
+      with ⟨V, hV, W, hW, hVW⟩
+    rcases (eventually_cobounded_mapsTo <|hsb hV).and (eventually_ne_cobounded 0) |>.exists
+      with ⟨c, hc, hc₀⟩
+    filter_upwards [(set_smul_mem_nhds_zero_iff <| inv_ne_zero hc₀).mpr hW]
+    rintro _ ⟨a, ha, rfl⟩ x hx
+    rw [smul_comm x c⁻¹, ← smul_assoc]
+    exact @hVW (_, _) ⟨hc hx, ha⟩
+  continuous_invFun := continuous_eval_const 1
+
 end ContinuousLinearMap
 
 open ContinuousLinearMap
@@ -782,8 +819,12 @@ abbrev CompactConvergenceCLM [TopologicalSpace E] [TopologicalSpace F] :=
   UniformConvergenceCLM σ F {(S : Set E) | IsCompact S}
 
 @[inherit_doc]
-scoped[CompactConvergenceCLM] notation
-  E " →SL_c[" σ "] " F => CompactConvergenceCLM σ E F
+scoped[CompactConvergenceCLM]
+notation:25 E " →SL_c[" σ "] " F => CompactConvergenceCLM σ E F
+
+@[inherit_doc]
+scoped[CompactConvergenceCLM]
+notation:25 E " →L_c[" R "] " F => CompactConvergenceCLM (RingHom.id R) E F
 
 namespace CompactConvergenceCLM
 
