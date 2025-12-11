@@ -197,30 +197,40 @@ open IntermediateField
 def Ksep (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) :=
   separableClosure (IntermediateField.adjoin k (x '' ⊤)) K
 
-/-
-example (K : Type) [Field K] (k : Subfield K) (h : Module.finrank k K > 1) :
-    K ≠ k := by
+lemma top_finrank_one (K : Type) [Field K] : Module.rank (⊤ : Subfield K) K = (1 : ℕ) := by
+  rw [rank_eq_of_equiv_equiv (⊤ : Subfield K).subtype (AddEquiv.refl K)
+    ⟨Subfield.subtype_injective ⊤, fun a => ⟨ ⟨a, trivial⟩, rfl⟩⟩ (fun _ => fun _ => rfl)]
+  exact CommSemiring.rank_self K
+
+lemma field_extension_degree_at_least_two_imp_nonequal (K : Type) [Field K] (k : Subfield K)
+    (h : (2 : ℕ) ≤ Module.rank k K) : ⊤ ≠ k := by
   by_contra hContra
-  have h' : 2 ≤ Module.finrank k K := h
-  rw [Module.le_rank_iff] at h'
-  sorry-/
+  rw [← hContra] at h
+  rw [top_finrank_one K] at h
+  simp at h
 
-example (k K : Type) [Field k] [Field K] [Algebra k K] (h : Module.finrank k K > 1) :
-    K ≠ (algebraMap k K).range := by
+lemma field_extension_degree_at_least_two_imp_nonequal' (K : Type) [Field K] {k : Subfield K}
+    (h : Module.rank k K ≥ (2 : ℕ)) : ∃ x : K, x ∉ k := by
+  by_contra hContra
+  have hTopEqk : (⊤ : Subfield K) = k := by
+    ext x
+    simp_all
+  exact (field_extension_degree_at_least_two_imp_nonequal K k h) hTopEqk
 
-  sorry
+-- Assuming that the separable closure of k(x_i) in K is not all of K, this gives an element of K
+-- that is not in the separable closure. This is the element `β` used in the proof of Stacks 04KM
+def beta_of_FGExtension {k K : Type} [Field k] [Field K] [Algebra k K] {ι : Type} {x : ι → K}
+    (hDeg : Module.rank (Ksep k K x).toSubfield K ≥
+      (2 : ℕ)) :
+    K :=
+  Classical.choose (field_extension_degree_at_least_two_imp_nonequal' K hDeg)
 
-example (k K : Type) [Field k] [Field K] [Algebra k K] (h : Module.finrank k K > 1) :
-    ∃ x : K, x ∉ (algebraMap k K).range := by
+def beta_of_FGExtensionProp {k K : Type} [Field k] [Field K] [Algebra k K] {ι : Type} {x : ι → K}
+    (hDeg : Module.rank (Ksep k K x).toSubfield K ≥
+      (2 : ℕ)) : beta_of_FGExtension hDeg ∉ (Ksep k K x) :=
+  Classical.choose_spec (field_extension_degree_at_least_two_imp_nonequal' K hDeg)
 
-  sorry
-
-def beta_of_FGExtension {k K : Type} [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
-    (hDeg : Module.finrank (separableClosure (IntermediateField.adjoin k (x '' ⊤)) K) K > 1) : K :=
-
-  sorry
-
-def P_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] (ι : Type) (x : ι → K) (β : K) :
+def P_of_beta (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) (β : K) :
     Polynomial (IntermediateField.adjoin k (x '' ⊤)) :=
   minpoly (IntermediateField.adjoin k (x '' ⊤)) β
 
@@ -268,11 +278,11 @@ lemma coefficients_of_S_prop (k : Type) {K : Type} [Field k] [Field K] [Algebra 
       y = (MvPolynomial.aeval x) r / (MvPolynomial.aeval x) s := by
   sorry -/
 
-open Classical in
-def coefficients_of_P {k K : Type} [Field k] [Field K] [Algebra k K] (ι : Type)
+/- open Classical in
+def coefficients_of_P (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
     (x : ι → K) (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) : Finset k :=
   Finset.biUnion (⊤ : Finset (Fin P.natDegree))
-    (fun i => coefficients_of_element k x (P.coeff i) (by apply (P.coeff i).property))
+    (fun i => coefficients_of_element k x (P.coeff i) (by apply (P.coeff i).property))-/
 
 open Classical in
 def adjoin_pth_roots {k : Type} [Field k] (p : ℕ) (S : Set k) [ExpChar k p] :
@@ -522,7 +532,7 @@ lemma P_coeff_is_pth_power_k'_of_transcendental (k K : Type) [Field k] [Field K]
 lemma P_is_pth_power_k'_transcendental (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
     (x : ι → K) [Fintype ι] (p : ℕ) [CharP k p] (hp : p.Prime) [ExpChar k p]
     (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) :
-    ∃ Q : Polynomial (k'_transcendental_pth_roots k K x p P), Polynomial.map
+    ∃ Q : Polynomial (k'_transcendental_pth_roots k K x p P.coeffs), Polynomial.map
       (algebraMap (IntermediateField.adjoin k (x '' ⊤)) _)
       P = Polynomial.map (frobenius _ p) Q := by
 
@@ -624,10 +634,6 @@ lemma sup_eq_adjoin :
   rw [Algebra.adjoin_union_eq_adjoin_adjoin]
   rw [Algebra.adjoin_eq]
 
-example :
-    (A ⊔ B : Subalgebra k R) ≃ₐ[A] (Algebra.adjoin A (B : Set R)) := by
-
-  sorry
 
 variable {k K : Type} [Field k] [Field K] [Algebra k K]
 variable (L1 L2 : IntermediateField k K)
@@ -635,16 +641,17 @@ variable (L1 L2 : IntermediateField k K)
 instance : Module L1 (L1 ⊔ L2 : IntermediateField k K) := RingHom.toModule
     (IntermediateField.inclusion le_sup_left).toRingHom
 
-
 -- some prerequisites on the degree in a compositum that we need
 lemma compositum_deg_le (L1 L2 : IntermediateField k K) (hAlg : Algebra.IsAlgebraic k L2) :
     Module.rank L1 (L1 ⊔ L2 : IntermediateField k K) ≤ Module.rank k L2 := by
   let isom : (L1 ⊔ L2 : IntermediateField k K) ≃ₗ[L1]
-      (IntermediateField.adjoin L1 (L2 : Set K)) := by
-
-    -- simp only [IntermediateField.sup_def]
-    -- rw [← IntermediateField.adjoin_adjoin_left]
-    sorry
+      (IntermediateField.adjoin L1 (L2 : Set K)) :=
+    { __ := Equiv.setCongr <| by
+        ext; simp only [IntermediateField.sup_def]
+        rw [← IntermediateField.restrictScalars_adjoin]
+        rfl
+      map_add' _ _ := rfl
+      map_smul' _ _ := rfl }
   have hRankEq : Module.rank L1 (L1 ⊔ L2 : IntermediateField k K) =
       Module.rank L1 (IntermediateField.adjoin L1 (L2 : Set K)) := LinearEquiv.rank_eq isom
   rw [hRankEq]
@@ -728,8 +735,8 @@ structure partial_inseparable_separable_extension (k K : Type) [Field k] [Field 
   d' : ℕ
   hdd' : d' < d
   purelyInsep : fk.IsPurelyInseparable'
-  insepDeg_eq_d : d = Module.finrank k (Ksep k K x)
-  insepDeg_eq_d' : d' = Module.finrank k' (Ksep k' K' x')
+  insepDeg_eq_d : d = Module.rank k (Ksep k K x)
+  insepDeg_eq_d' : d' = Module.rank k' (Ksep k' K' x')
 
 instance (k K : Type) [Field k] [Field K] [Algebra k K] [Algebra.EssFiniteType k K] (d : ℕ)
     {ι : Type} (x : ι → K) (hx : IsTranscendenceBasis k x)
@@ -770,21 +777,26 @@ def glue_partial_inseparable_separable_extension {k K : Type} [Field k] [Field K
     insepDeg_eq_d' := right_ext.insepDeg_eq_d'
   }
 
--- given a finitely generated field extension, give a partial inseparable separable
+-- given a finitely generated field extension with `d ≥ 2`, give a partial inseparable separable
 -- extension square of it
 def partial_extension_square_of_FGExtension {k K : Type} [Field k] [Field K] [Algebra k K]
-    [Algebra.EssFiniteType k K] (d : ℕ) {ι : Type} (x : ι → K) (hx : IsTranscendenceBasis k x) :
-    partial_inseparable_separable_extension k K d x hx := {
-      k' := _
-      K' := _
-      fk := _
-      fK := _
-      commSq := _
-      x' := _
-      hx' := _
-      d' := _
-      hdd' := _
-      purelyInsep := _
-      insepDeg_eq_d := _
-      insepDeg_eq_d' := _
+    [Algebra.EssFiniteType k K] (d : ℕ) {ι : Type} (x : ι → K) (hx : IsTranscendenceBasis k x)
+    (hd : Module.rank (Ksep k K x) K ≥ 2) (p : ℕ) (hp : p.Prime) [ExpChar k p] [Fintype ι] :
+    partial_inseparable_separable_extension k K d x hx :=
+    let β : K := beta_of_FGExtension hd
+    let P : (IntermediateField.adjoin k (x '' ⊤))[X] := P_of_beta k K x β
+    {
+      k' := k'_of_S k K x P.coeffs p
+      K' := k'_transcendental_pth_roots k K x p P.coeffs
+      alg' := RingHom.toAlgebra <| RingHom.comp (Subring.inclusion le_sup_left) IsAlgClosed.lift
+      fk := RingHom.smulOneHom
+      fK := sorry
+      commSq := sorry
+      x' := sorry
+      hx' := sorry
+      d' := sorry
+      hdd' := sorry
+      purelyInsep := sorry
+      insepDeg_eq_d := sorry
+      insepDeg_eq_d' := sorry
     }
