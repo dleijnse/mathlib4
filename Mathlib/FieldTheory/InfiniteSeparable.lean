@@ -541,10 +541,11 @@ lemma P_is_pth_power_k'_transcendental (k K : Type) [Field k] [Field K] [Algebra
 
 -- TODO: place this in a different file, it generalizes X_pow_sub_one_separable_iff (but does
 -- require the extra assumption that n is not zero, so it is not a complete generalization)
-theorem X_pow_sub_C_separable_iff {F : Type*} [Field F] {n : ℕ} (x : F) (hn : n > 0)
-    (hx : IsUnit x) : (X ^ n - C x : F[X]).Separable ↔ (n : F) ≠ 0 := by
-  refine ⟨?_, fun h => separable_X_pow_sub_C_unit hx.unit (IsUnit.mk0 _ h)⟩
+theorem X_pow_sub_C_separable_iff {F : Type*} [Field F] {n : ℕ} (x : F) (hn : 0 < n) (hx : x ≠ 0) :
+    (X ^ n - C x : F[X]).Separable ↔ (n : F) ≠ 0 := by
+  refine ⟨?_, fun h => separable_X_pow_sub_C_unit (Units.mk0 x hx) (IsUnit.mk0 _ h)⟩
   rw [separable_def', derivative_sub, derivative_X_pow, derivative_C, sub_zero]
+  -- Suppose `(n : F) = 0`, then the derivative is `0`, so `X ^ n - 1` is a unit, contradiction.
   rintro (h : IsCoprime _ _) hn'
   rw [hn', C_0, zero_mul, isCoprime_zero_right] at h
   have hDeg : (X ^ n - C x).natDegree = n := by simp
@@ -597,12 +598,10 @@ lemma pth_power_poly_imp_pth_power {k K : Type*} [Field k] [Field K] [Algebra k 
     have hQSep : (mapAlg k K Q).Separable :=
       Polynomial.Separable.map ((Polynomial.separable_map _).mp (hQ ▸ hSep))
     apply Polynomial.Separable.of_dvd hQSep at QX_pow_p_dvd
-    have hαUnit : IsUnit α := by
-      rw [isUnit_iff_ne_zero]
-      by_contra hzero
-      exact ((hzero ▸ hα) (by use 0; exact zero_pow (pos_iff_ne_zero.mp (Nat.Prime.pos hp))))
+    have hαNonZero : α ≠ 0 := fun hzero =>  ((hzero ▸ hα)
+      (by use 0; exact zero_pow (pos_iff_ne_zero.mp (Nat.Prime.pos hp))))
     have hInsep_iff_p_ne_zero := ((ne_eq _ _) ▸
-      (not_iff_not.mpr (X_pow_sub_C_separable_iff α (Nat.Prime.pos hp) hαUnit))).trans (not_not)
+      (not_iff_not.mpr (X_pow_sub_C_separable_iff α (Nat.Prime.pos hp) hαNonZero))).trans (not_not)
     have hpzero : (p : K) = 0 := by
       rw [← (CharP.charP_iff_prime_eq_zero hp), ← Algebra.charP_iff k K p]
       assumption
