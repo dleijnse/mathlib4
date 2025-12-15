@@ -563,7 +563,7 @@ lemma minpoly_of_non_pth_power {k K : Type*} [Field k] [Field K] [Algebra k K] {
   · simp [hρ]
   · have hDeg : (X ^ p - C α).natDegree = p := by simp
     simp [Monic.def, leadingCoeff, hDeg,
-            Polynomial.coeff_C_ne_zero (Nat.ne_zero_of_lt <| Nat.Prime.pos hp)]
+          Polynomial.coeff_C_ne_zero (Nat.ne_zero_of_lt <| Nat.Prime.pos hp)]
 
 @[stacks 031V "(2)"]
 lemma pth_power_poly_imp_pth_power {k K : Type*} [Field k] [Field K] [Algebra k K]
@@ -578,27 +578,23 @@ lemma pth_power_poly_imp_pth_power {k K : Type*} [Field k] [Field K] [Algebra k 
     obtain ⟨ρ, hρ⟩ := IsAlgClosed.exists_pow_nat_eq (algebraMap K (AlgebraicClosure K) α)
       (Nat.Prime.pos hp)
     have QX_pow_p_dvd : (X ^ p - C α) ∣ Polynomial.mapAlg k K Q := by
-      -- We will prove this by proving that X ^ p - C α is the minimal polynomial of ρ over K and
-      -- that Q(ρ) = 0, the result then follows from `minpoly.dvd`
-      have hRoot : aeval ρ (X ^ p - C α) = 0 ∧ aeval ρ Q = 0 := by
-        constructor
-        · simp [hρ]
-        · have _ : ExpChar (AlgebraicClosure K) p := ExpChar.of_injective_algebraMap' k _
-          have hFrob : frobenius (AlgebraicClosure K) p ((aeval ρ) Q) = 0 := by
-            rw [← Polynomial.eval_map_algebraMap, ← Polynomial.eval₂_at_apply, frobenius_def, hρ,
-                Polynomial.eval₂_map, ← RingHom.frobenius_comm, ← Polynomial.eval₂_map, ← hQ,
-                ← Polynomial.aeval_def, aeval_algebraMap_eq_zero_iff]
-            exact hP
-          subst hQ
-          simp_all only [not_exists, map_eq_zero]
+      -- We will prove this by proving that `Q(ρ) = 0` and using that `X ^ p - C α` is the minimal
+      -- polynomial of `ρ` over `K`, the result then follows from `minpoly.dvd`
+      have hRoot : aeval ρ Q = 0 := by
+        have _ : ExpChar (AlgebraicClosure K) p := ExpChar.of_injective_algebraMap' k _
+        rw [← map_eq_zero (frobenius (AlgebraicClosure K) p), ← Polynomial.eval_map_algebraMap,
+            ← Polynomial.eval₂_at_apply, frobenius_def, hρ, Polynomial.eval₂_map,
+            ← RingHom.frobenius_comm, ← Polynomial.eval₂_map, ← hQ, ← Polynomial.aeval_def,
+            aeval_algebraMap_eq_zero_iff]
+        exact hP
       have _ : ExpChar K p := ExpChar.of_injective_algebraMap' k _
       rw [minpoly_of_non_pth_power hp hα ρ hρ]
       apply minpoly.dvd
-      rw [← hRoot.2, mapAlg_eq_map, aeval_map_algebraMap]
+      rw [← hRoot, mapAlg_eq_map, aeval_map_algebraMap]
     have hQSep : (mapAlg k K Q).Separable :=
       Polynomial.Separable.map ((Polynomial.separable_map _).mp (hQ ▸ hSep))
     apply Polynomial.Separable.of_dvd hQSep at QX_pow_p_dvd
-    have hαNonZero : α ≠ 0 := fun hzero =>  ((hzero ▸ hα)
+    have hαNonZero : α ≠ 0 := fun hzero => ((hzero ▸ hα)
       (by use 0; exact zero_pow (pos_iff_ne_zero.mp (Nat.Prime.pos hp))))
     have hInsep_iff_p_ne_zero := ((ne_eq _ _) ▸
       (not_iff_not.mpr (X_pow_sub_C_separable_iff α (Nat.Prime.pos hp) hαNonZero))).trans (not_not)
