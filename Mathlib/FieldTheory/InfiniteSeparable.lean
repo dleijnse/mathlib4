@@ -356,8 +356,7 @@ lemma adjoin_pth_roots_of_finite_finite {k : Type} [Field k] (p : ℕ) (S : Set 
   have hFin : Finite ((frobenius (AlgebraicClosure k) p) ⁻¹'
       ((algebraMap k (AlgebraicClosure k)) '' S)) := by
     have hFin' : Finite ((algebraMap k (AlgebraicClosure k)) '' S) := by infer_instance
-    have hInj : Function.Injective (frobenius (AlgebraicClosure k) p) := frobenius_inj _ _
-    exact Set.Finite.preimage (Set.injOn_of_injective hInj) hFin'
+    exact Set.Finite.preimage (Set.injOn_of_injective (frobenius_inj _ _)) hFin'
   apply IntermediateField.finiteDimensional_adjoin
   intro s hs
   apply IsIntegral.of_pow (n := p) (Nat.Prime.pos hp)
@@ -432,16 +431,16 @@ lemma adjoin_pth_roots_frob_img_mem' {k : Type} [Field k] (K : Type) [Field K] [
     simp
   · rw [← hz.2]
     simp only [RingEquiv.toEquiv_eq_coe, Equiv.invFun_as_coe]
-    /-have hVeryStupid : IsAlgClosed.lift (R := k) (S := AlgebraicClosure k)
+    /-have hCoeEquality : IsAlgClosed.lift (R := k) (S := AlgebraicClosure k)
         ((EquivLike.toEquiv (frobeniusEquiv (AlgebraicClosure k) p)).symm
           ((algebraMap k (AlgebraicClosure k)) z))
         = (IsAlgClosed.lift (R := k) (S := AlgebraicClosure k) (M := AlgebraicClosure K)).toRingHom
           (((frobeniusEquiv (AlgebraicClosure k) p)).symm
             ((algebraMap k (AlgebraicClosure k)) z)) := by
       simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_coe]
-      rfl-/
-    -- rw [hVeryStupid]
-    erw [RingHom.map_frobeniusEquiv_symm] -- the part commented out above is necessary to turn the
+      rfl
+    rw [hCoeEquality]-/
+    erw [RingHom.map_frobeniusEquiv_symm] -- the part commented out above is necessary to turn this
       -- erw into an rw.
     simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_coe, AlgHom.commutes]
     rfl
@@ -596,7 +595,7 @@ lemma test (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι �
 lemma test' (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) (p : ℕ) [Fintype ι]
     [ExpChar k p] (hp : p.Prime) (y : IntermediateField.adjoin k (x '' ⊤)) :
     (algebraMap (IntermediateField.adjoin k (x '' ⊤)) _) y ∈
-      (frobenius (k'_transcendental_pth_roots k K x p {y}) p).range := by
+      (frobenius (k'_transcendental_pth_roots' k K x p {y}) p).range := by
 
   sorry
 
@@ -604,11 +603,11 @@ lemma P_coeff_is_pth_power_k'_of_transcendental (k K : Type) [Field k] [Field K]
     {ι : Type} (x : ι → K) [Fintype ι] (p : ℕ) [CharP k p] (hp : p.Prime) [ExpChar k p]
     (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) (i : ℕ) :
     (algebraMap (IntermediateField.adjoin k (x '' ⊤)) _) (P.coeff i) ∈
-      (frobenius (k'_transcendental_pth_roots k K x p P.coeffs) p).range := by
-  -- should use k'_of_S_mono here to reduce to single element
+      (frobenius (k'_transcendental_pth_roots' k K x p P.coeffs) p).range := by
+  unfold k'_transcendental_pth_roots'
   have hSingleton : {P.coeff i} ⊆ P.coeffs := by sorry
 
-  exact (k'_of_S_mono k K x p hSingleton) (test' k K x p hp (P.coeff i))
+  exact (adjoin_pth_roots_mono p hSingleton) (test' k K x p hp (P.coeff i))
 
   sorry
 
@@ -618,7 +617,7 @@ lemma P_is_pth_power_k'_transcendental (k K : Type) [Field k] [Field K] [Algebra
     (x : ι → K) [Fintype ι] (p : ℕ) [CharP k p] (hp : p.Prime) [ExpChar k p]
     (P : Polynomial (IntermediateField.adjoin k (x '' ⊤))) :
     Polynomial.mapRingHom (algebraMap (IntermediateField.adjoin k (x '' ⊤)) _) P ∈
-      (Polynomial.mapRingHom (frobenius (k'_transcendental_pth_roots k K x p P.coeffs) p)).range :=
+      (Polynomial.mapRingHom (frobenius (k'_transcendental_pth_roots' k K x p P.coeffs) p)).range :=
     by
   rw [Polynomial.mem_map_range]
   intro n
