@@ -198,25 +198,32 @@ open IntermediateField
 -- of `k[x_i]` for some
 class IsPurelyTranscendental (k K : Type) [Field k] [Field K] [Algebra k K] where
   ι : Type
-  Equiv : FractionRing (MvPolynomial ι k) ≃ₐ[k] K
-
-class IsPurelyTranscendental' (k K : Type) [Field k] [Field K] [Algebra k K] where
-  ι : Type
   alg : Algebra (MvPolynomial ι k) K
   IsFracRing : IsFractionRing (MvPolynomial ι k) K
 
-instance (k K : Type) [Field k] [Field K] [Algebra k K] [h : IsPurelyTranscendental' k K] :
+instance (k K : Type) [Field k] [Field K] [Algebra k K] [h : IsPurelyTranscendental k K] :
     Algebra (MvPolynomial h.ι k) K :=
   h.alg
 
+instance (k K : Type) [Field k] [Field K] [Algebra k K] [h : IsPurelyTranscendental k K] :
+    IsFractionRing (MvPolynomial h.ι k) K :=
+  h.IsFracRing
 
-def IsPurelyTranscendental'.x (k K : Type) [Field k] [Field K] [Algebra k K]
-    [h : IsPurelyTranscendental' k K] : h.ι → K :=
-  algebraMap (MvPolynomial h.ι k) K ∘ MvPolynomial.X
+def IsPurelyTranscendental.mvPolyFracRingEquiv (k K : Type) [Field k] [Field K] [Algebra k K]
+    [h : IsPurelyTranscendental k K] :
+    FractionRing (MvPolynomial h.ι k) ≃ₐ[MvPolynomial h.ι k] K := FractionRing.algEquiv _ _
 
 def IsPurelyTranscendental.x (k K : Type) [Field k] [Field K] [Algebra k K]
+    [h : IsPurelyTranscendental k K] : h.ι → K :=
+  algebraMap (MvPolynomial h.ι k) K ∘ MvPolynomial.X
+
+lemma IsPurelyTranscendental.x_comparison (k K : Type) [Field k] [Field K] [Algebra k K]
     [h : IsPurelyTranscendental k K] :
-    h.ι → K := h.Equiv ∘ algebraMap (MvPolynomial h.ι k) _ ∘ MvPolynomial.X
+    h.x = h.mvPolyFracRingEquiv ∘
+      algebraMap (MvPolynomial h.ι k) (FractionRing (MvPolynomial h.ι k)) ∘ MvPolynomial.X := by
+  unfold x
+  ext i
+  simp
 
 lemma IsTranscendenceBasis.mvPolynomialFractionField (ι : Type) (k : Type) [Field k] :
     IsTranscendenceBasis k
@@ -231,31 +238,27 @@ lemma IsTranscendenceBasis.mvPolynomialFractionField (ι : Type) (k : Type) [Fie
 
 lemma IsPurelyTranscendental.x_transcendence_basis (k K : Type) [Field k] [Field K] [Algebra k K]
     [h : IsPurelyTranscendental k K] :
-    IsTranscendenceBasis k <| IsPurelyTranscendental.x k K :=
-  AlgEquiv.isTranscendenceBasis h.Equiv (IsTranscendenceBasis.mvPolynomialFractionField h.ι k)
+    IsTranscendenceBasis k <| IsPurelyTranscendental.x k K := by
+  haveI : IsScalarTower k (MvPolynomial h.ι k) K := sorry
+  rw [IsPurelyTranscendental.x_comparison]
+  exact AlgEquiv.isTranscendenceBasis ((h.mvPolyFracRingEquiv k K).restrictScalars k)
+    (IsTranscendenceBasis.mvPolynomialFractionField h.ι k)
 
 instance adjoin_transcendence_basis_purelyTranscendental (k K : Type) [Field k] [Field K]
     [Algebra k K] {ι : Type} (x : ι → K) (h : IsTranscendenceBasis k x) :
     IsPurelyTranscendental k (IntermediateField.adjoin k (Set.range x)) := {
       ι := ι
-      Equiv := sorry -- maybe first make map from MvPolynomial to IntermediateField.adjoin k (x '' ⊤)
+      alg := ((Subalgebra.inclusion (IntermediateField.algebra_adjoin_le_adjoin k (Set.range x)) :
+            Algebra.adjoin k (Set.range x) →+* IntermediateField.adjoin k (Set.range x)).comp
+          (AlgebraicIndependent.aevalEquiv h.1)).toAlgebra
+      IsFracRing := by
+
+        haveI : Algebra (MvPolynomial ι k) (IntermediateField.adjoin k (Set.range x)) := sorry
+        haveI : FaithfulSMul (MvPolynomial ι k) (IntermediateField.adjoin k (Set.range x)) := sorry
+        apply IsFractionRing.of_field (MvPolynomial ι k) (IntermediateField.adjoin k (Set.range x))
+-- IntermediateField.algebraAdjoinAdjoin.instIsFractionRingSubtypeMemSubalgebraAdjoinAdjoin could be useful
+        sorry
     }
-
-example (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
-    (h : IsTranscendenceBasis k x) :
-    MvPolynomial ι k ≃ₐ[k] Algebra.adjoin k (Set.range x) := AlgebraicIndependent.aevalEquiv h.1
-
-example (R : Type) [CommRing R] [IsDomain R] : R →+* FractionRing R :=
-  OreLocalization.numeratorRingHom
-
-example (R : Type) [CommRing R] [IsDomain R] :
-    Function.Injective (OreLocalization.numeratorRingHom : R →+* FractionRing R) := by sorry
-
-
-example (R S : Type) [CommRing R] [CommRing S] [IsDomain R] [IsDomain S] (f : R →+* FractionRing S)
-    (h : Function.Injective f) :
-    FractionRing R →+* FractionRing S :=
-  IsFractionRing.lift h
 
 /-
 example (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
@@ -267,7 +270,7 @@ example (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K
   IsFractionRing.algEquivOfAlgEquiv (AlgebraicIndependent.aevalEquiv h.1) -/
 
 def Ksep (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) :=
-  separableClosure (IntermediateField.adjoin k (x '' ⊤)) K
+  separableClosure (IntermediateField.adjoin k (Set.range x)) K
 
 lemma top_finrank_one (K : Type) [Field K] : Module.rank (⊤ : Subfield K) K = (1 : ℕ) := by
   rw [rank_eq_of_equiv_equiv (⊤ : Subfield K).subtype (AddEquiv.refl K)
@@ -461,6 +464,26 @@ lemma adjoin_pth_roots_frob_img_mem' {k : Type} [Field k] (K : Type) [Field K] [
     simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_coe, AlgHom.commutes]
     rfl
 
+variable {k : Type} [Field k] {p : ℕ} [ExpChar k p]
+instance blarg : Algebra (frobenius k p).range k := sorry
+
+-- The first lemma not in the PR anymore:
+lemma adjoin_pth_roots_mem_iff {k : Type} [Field k] (p : ℕ) (S : Set k) [ExpChar k p]
+    (y : AlgebraicClosure k) :
+    haveI : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
+    haveI : Field (frobenius k p).range := by sorry
+    y ∈ adjoin_pth_roots p S ↔
+      frobenius (AlgebraicClosure k) p y ∈ (algebraMap k (AlgebraicClosure k)) ''
+        (@IntermediateField.adjoin (frobenius k p).range _ k _ sorry S) := by
+    constructor
+    · intro hy
+      unfold adjoin_pth_roots at hy
+
+      sorry
+    · sorry
+
+
+
 def k'_of_S (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
     (S : Finset (IntermediateField.adjoin k (Set.range x))) (p : ℕ) [ExpChar k p] :
     IntermediateField k (AlgebraicClosure k) :=
@@ -540,7 +563,7 @@ def x_x'_frob (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι
 lemma x'_AlgebraicIndependent (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
     [Fintype ι] (p : ℕ) [ExpChar k p] (hA : AlgebraicIndependent k x) :
     AlgebraicIndependent k (x' k K x p) := by
-  have hA' : AlgebraicIndependent k ((x_x'_frob k K x p) ∘ x' k K x p) := sorry
+  have hA' : AlgebraicIndependent k ((x_x'_frob k K x p) ∘ x' k K x p) := by sorry
   exact AlgebraicIndependent.of_ringHom_of_comp_eq (frobenius k p) (x_x'_frob k K x p) hA'
       (frobenius_inj k p) (by sorry)
 
@@ -552,13 +575,12 @@ lemma x'_transcendental_basis (k K : Type) [Field k] [Field K] [Algebra k K] {ι
   -- maybe use something like  algebraicIndependent_adjoin
   sorry
 
--- TODO: should we change this definition by just adjoining roots of a bigger set?
-def k'_transcendental_pth_roots (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
+/-def k'_transcendental_pth_roots (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
     (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p]
     (S : Finset (IntermediateField.adjoin k (Set.range x))) :
     IntermediateField k (AlgebraicClosure K) :=
   (k'_of_S k K x S p).map IsAlgClosed.lift ⊔
-      (restrictScalars k (k_transcendental_pth_roots k K x p))
+      (restrictScalars k (k_transcendental_pth_roots k K x p))-/
 
 def k'_transcendental_pth_roots' (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
     (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p]
@@ -568,7 +590,54 @@ def k'_transcendental_pth_roots' (k K : Type) [Field k] [Field K] [Algebra k K] 
   @adjoin_pth_roots (IntermediateField.adjoin k (Set.range x)) _ p
     (((algebraMap k _) '' coefficients_of_S k x S) ∪ (Set.range <| x_res k K x p)) _
 
-def trivial_incl1 (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
+def k'_transcendental_pth_roots'' (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
+    (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p]
+    (S : Finset (IntermediateField.adjoin k (Set.range x))) :
+    IntermediateField (IntermediateField.adjoin k (Set.range x))
+      (AlgebraicClosure K) :=
+  haveI : NoZeroSMulDivisors (↥(IntermediateField.adjoin k (Set.range x)))
+    (AlgebraicClosure K) := NoZeroSMulDivisors.instOfFaithfulSMul
+  haveI : NoZeroSMulDivisors (↥(IntermediateField.adjoin k (Set.range x)))
+    (AlgebraicClosure ↥(IntermediateField.adjoin k (Set.range x))) :=
+    GroupWithZero.toNoZeroSMulDivisors
+  (k'_transcendental_pth_roots' k K x p S).map IsAlgClosed.lift
+
+
+
+lemma pth_roots_inclusion (k K : Type) [Field k] [Field K] (S : Set k)
+    [Algebra k K] (p : ℕ) [ExpChar k p] :
+    haveI : ExpChar K p := ExpChar.of_injective_algebraMap' k _
+    ((adjoin_pth_roots p S).map (IsAlgClosed.lift)) ≤
+      (adjoin_pth_roots p ((algebraMap k K) '' S)).restrictScalars k := by
+  -- unfold adjoin_pth_roots
+  intro x hx
+  simp_all only [mem_restrictScalars]
+  obtain ⟨y, hy1, hy2⟩ := hx
+  -- TODO: use adjoin_pth_roots_mem_iff
+  sorry
+
+def adjoin_pth_roots_to_adjoin_pth_roots_algebraMap (k K : Type) [Field k] [Field K] (S : Set k)
+    [Algebra k K] (p : ℕ) [ExpChar k p] :
+    haveI : ExpChar K p := ExpChar.of_injective_algebraMap' k _
+    adjoin_pth_roots p S →ₐ[k] adjoin_pth_roots p ((algebraMap k K) '' S) :=
+    (IntermediateField.inclusion (pth_roots_inclusion k K S p)).comp
+      <| (IntermediateField.equivMap (adjoin_pth_roots p S) IsAlgClosed.lift).toAlgHom
+
+
+-- maybe improve the following to a scalar tower over `k` using `IsScalarTower.of_algHom`
+instance k'_of_S_k'_transcendental_algebra (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
+    (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p]
+    (S : Finset (IntermediateField.adjoin k (Set.range x))) :
+    Algebra (k'_of_S k K x S p) (k'_transcendental_pth_roots'' k K x p S) := by
+  apply RingHom.toAlgebra
+  unfold k'_of_S k'_transcendental_pth_roots'' k'_transcendental_pth_roots'
+  -- use `IntermediateField.lift_adjoin` to deal with the IsAlgClosed.lift
+
+  -- RingHom.toAlgebra sorry
+  sorry
+
+
+/-def trivial_incl1 (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type}
     (x : ι → K) [Fintype ι] (p : ℕ) [ExpChar k p] :
     (IntermediateField.adjoin k (Set.range x)) →+* k_transcendental_pth_roots k K x p :=
   algebraMap ↥(IntermediateField.adjoin k (Set.range x)) ↥(k_transcendental_pth_roots k K x p)
@@ -591,6 +660,7 @@ instance alg_k' (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : 
     (p : ℕ) [ExpChar k p] (S : Finset (IntermediateField.adjoin k (Set.range x))) :
       Algebra (IntermediateField.adjoin k (Set.range x)) (k'_transcendental_pth_roots k K x p S) :=
   RingHom.toAlgebra ((trivial_incl2 k K x p S).toRingHom.comp (trivial_incl1 k K x p))
+-/
 
 
 lemma test (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K) (p : ℕ) [Fintype ι]
@@ -741,6 +811,8 @@ lemma compositum_deg_le (L1 L2 : IntermediateField k K) (hAlg : Algebra.IsAlgebr
     Module.rank L1 (L1 ⊔ L2 : IntermediateField k K) ≤ Module.rank k L2 := by
   let isom : (L1 ⊔ L2 : IntermediateField k K) ≃ₗ[L1]
       (IntermediateField.adjoin L1 (L2 : Set K)) :=
+    -- The isomorphism is difficult to construct directly (the problem is with `L1`-linearity),
+    -- so we show that the two sides are equal as subsets of K.
     { __ := Equiv.setCongr <| by
         ext; simp only [IntermediateField.sup_def]
         rw [← IntermediateField.restrictScalars_adjoin]
@@ -751,11 +823,6 @@ lemma compositum_deg_le (L1 L2 : IntermediateField k K) (hAlg : Algebra.IsAlgebr
       Module.rank L1 (IntermediateField.adjoin L1 (L2 : Set K)) := LinearEquiv.rank_eq isom
   rw [hRankEq]
   exact IntermediateField.adjoin_rank_le_of_isAlgebraic_right _ _
-
-
-example (R : Type) [CommRing R] (M N : Type) [AddCommMonoid M] [AddCommMonoid N] [Module R M]
-    [Module R N] (f : M ≃ₗ[R] N) : Module.rank R M = Module.rank R N := by
-  exact LinearEquiv.rank_eq f
 
 
 
@@ -794,7 +861,7 @@ def RingHom.separableDegree_of_transcendenceBasis {k K : Type} [Field k] [Field 
 
 
 structure inseparable_separable_extension {k K : Type} [Field k] [Field K] [Algebra k K]
-    [Algebra.EssFiniteType k K] where
+    [Algebra.EssFiniteType k K] where -- TODO: remove Algebra.EssFiniteType
   k' : Type
   [fieldk' : Field k']
   K' : Type
@@ -830,8 +897,8 @@ structure partial_inseparable_separable_extension (k K : Type) [Field k] [Field 
   d' : ℕ
   hdd' : d' < d
   purelyInsep : fk.IsPurelyInseparable'
-  insepDeg_eq_d : d = Module.rank k (Ksep k K x)
-  insepDeg_eq_d' : d' = Module.rank k' (Ksep k' K' x')
+  insepDeg_eq_d : d = Module.rank (IntermediateField.adjoin k (Set.range x)) (Ksep k K x)
+  insepDeg_eq_d' : d' = Module.rank (IntermediateField.adjoin k' (Set.range x')) (Ksep k' K' x')
 
 instance (k K : Type) [Field k] [Field K] [Algebra k K] [Algebra.EssFiniteType k K] (d : ℕ)
     {ι : Type} (x : ι → K) (hx : IsTranscendenceBasis k x)
@@ -883,13 +950,23 @@ def partial_extension_square_of_FGExtension {k K : Type} [Field k] [Field K] [Al
     let P : (IntermediateField.adjoin k (Set.range x))[X] := P_of_beta k K x β
     {
       k' := k'_of_S k K x P.coeffs p
-      K' := k'_transcendental_pth_roots k K x p P.coeffs
-      alg' := sorry -- RingHom.toAlgebra <| RingHom.comp (Subring.inclusion le_sup_left)
-                    -- IsAlgClosed.lift
+      K' := (((⊤ : IntermediateField k K).map (algHom k K (AlgebraicClosure K))) ⊔
+        (k'_transcendental_pth_roots'' k K x p P.coeffs).restrictScalars k :
+          IntermediateField k (AlgebraicClosure K))
+      alg' :=
+        let i1 : k'_of_S k K x P.coeffs p →+* (k'_transcendental_pth_roots'' k K x p P.coeffs) :=
+          algebraMap _ _ -- uses the instance k'_of_S_k'_transcendental_algebra
+        let i2 : (k'_transcendental_pth_roots'' k K x p P.coeffs) →+*
+            (((⊤ : IntermediateField k K).map (algHom k K (AlgebraicClosure K))) ⊔
+            (k'_transcendental_pth_roots'' k K x p P.coeffs).restrictScalars k :
+            IntermediateField k (AlgebraicClosure K)) :=
+          -- (IntermediateField.inclusion le_sup_right).toRingHom
+          sorry
+        RingHom.toAlgebra <| i2.comp i1
       fk := RingHom.smulOneHom
       fK := sorry
       commSq := sorry
-      x' := x' k K x p
+      x' := x' k K x p -- compose with a le_sup_right.toRingHom
       hx' := sorry
       d' := sorry
       hdd' := sorry
@@ -897,3 +974,9 @@ def partial_extension_square_of_FGExtension {k K : Type} [Field k] [Field K] [Al
       insepDeg_eq_d := sorry
       insepDeg_eq_d' := sorry
     }
+
+example (k K : Type) [Field k] [Field K] [Algebra k K] : K →ₐ[k] AlgebraicClosure K :=
+  algHom k K (AlgebraicClosure K)
+
+example (k K : Type) [Field k] [Field K] [Algebra k K] : IntermediateField k (AlgebraicClosure K) :=
+  (⊤ : IntermediateField k K).map (algHom k K (AlgebraicClosure K))
