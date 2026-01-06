@@ -199,6 +199,9 @@ open IntermediateField
 class IsPurelyTranscendental (k K : Type) [Field k] [Field K] [Algebra k K] where
   ι : Type
   alg : Algebra (MvPolynomial ι k) K
+  -- The compatibility of the different algebra structures is not automatic, so we require the
+  -- following to be a scalar tower:
+  IsScalarTower : IsScalarTower k (MvPolynomial ι k) K
   IsFracRing : IsFractionRing (MvPolynomial ι k) K
 
 instance (k K : Type) [Field k] [Field K] [Algebra k K] [h : IsPurelyTranscendental k K] :
@@ -208,6 +211,9 @@ instance (k K : Type) [Field k] [Field K] [Algebra k K] [h : IsPurelyTranscenden
 instance (k K : Type) [Field k] [Field K] [Algebra k K] [h : IsPurelyTranscendental k K] :
     IsFractionRing (MvPolynomial h.ι k) K :=
   h.IsFracRing
+
+instance (k K : Type) [Field k] [Field K] [Algebra k K] [h : IsPurelyTranscendental k K] :
+    IsScalarTower k (MvPolynomial h.ι k) K := h.IsScalarTower
 
 def IsPurelyTranscendental.mvPolyFracRingEquiv (k K : Type) [Field k] [Field K] [Algebra k K]
     [h : IsPurelyTranscendental k K] :
@@ -239,26 +245,35 @@ lemma IsTranscendenceBasis.mvPolynomialFractionField (ι : Type) (k : Type) [Fie
 lemma IsPurelyTranscendental.x_transcendence_basis (k K : Type) [Field k] [Field K] [Algebra k K]
     [h : IsPurelyTranscendental k K] :
     IsTranscendenceBasis k <| IsPurelyTranscendental.x k K := by
-  haveI : IsScalarTower k (MvPolynomial h.ι k) K := sorry
   rw [IsPurelyTranscendental.x_comparison]
   exact AlgEquiv.isTranscendenceBasis ((h.mvPolyFracRingEquiv k K).restrictScalars k)
     (IsTranscendenceBasis.mvPolynomialFractionField h.ι k)
 
 instance adjoin_transcendence_basis_purelyTranscendental (k K : Type) [Field k] [Field K]
     [Algebra k K] {ι : Type} (x : ι → K) (h : IsTranscendenceBasis k x) :
-    IsPurelyTranscendental k (IntermediateField.adjoin k (Set.range x)) := {
-      ι := ι
-      alg := ((Subalgebra.inclusion (IntermediateField.algebra_adjoin_le_adjoin k (Set.range x)) :
-            Algebra.adjoin k (Set.range x) →+* IntermediateField.adjoin k (Set.range x)).comp
-          (AlgebraicIndependent.aevalEquiv h.1)).toAlgebra
-      IsFracRing := by
+    IsPurelyTranscendental k (IntermediateField.adjoin k (Set.range x)) :=
+  {
+    ι := ι
+    alg := ((Subalgebra.inclusion (IntermediateField.algebra_adjoin_le_adjoin k (Set.range x)) :
+          Algebra.adjoin k (Set.range x) →ₐ[k] IntermediateField.adjoin k (Set.range x)).comp
+        (AlgebraicIndependent.aevalEquiv h.1)).toAlgebra
+    IsScalarTower := by
+      exact IsScalarTower.of_algHom
+        ((Subalgebra.inclusion (IntermediateField.algebra_adjoin_le_adjoin k (Set.range x)) :
+          Algebra.adjoin k (Set.range x) →ₐ[k] IntermediateField.adjoin k (Set.range x)).comp
+        (AlgebraicIndependent.aevalEquiv h.1).toAlgHom)
+    IsFracRing := by
+      haveI : Algebra (MvPolynomial ι k) (IntermediateField.adjoin k (Set.range x)) := sorry
+      haveI : FaithfulSMul (MvPolynomial ι k) ↥(IntermediateField.adjoin k (Set.range x)) := sorry
 
-        haveI : Algebra (MvPolynomial ι k) (IntermediateField.adjoin k (Set.range x)) := sorry
-        haveI : FaithfulSMul (MvPolynomial ι k) (IntermediateField.adjoin k (Set.range x)) := sorry
-        apply IsFractionRing.of_field (MvPolynomial ι k) (IntermediateField.adjoin k (Set.range x))
+      -- apply IsFractionRing.of_field (MvPolynomial ι k) ↥(IntermediateField.adjoin k (Set.range x))
+
+
 -- IntermediateField.algebraAdjoinAdjoin.instIsFractionRingSubtypeMemSubalgebraAdjoinAdjoin could be useful
-        sorry
-    }
+      sorry
+  }
+
+
 
 /-
 example (k K : Type) [Field k] [Field K] [Algebra k K] {ι : Type} (x : ι → K)
@@ -964,15 +979,18 @@ def partial_extension_square_of_FGExtension {k K : Type} [Field k] [Field K] [Al
           sorry
         RingHom.toAlgebra <| i2.comp i1
       fk := RingHom.smulOneHom
-      fK := sorry
-      commSq := sorry
+      fK :=  ((IntermediateField.inclusion le_sup_left).toRingHom).comp
+        ((IntermediateField.equivMap (⊤ : IntermediateField k K)
+          (algHom k K (AlgebraicClosure K))).toRingHom.comp
+          IntermediateField.topEquiv.symm.toRingHom)
+      commSq := sorry -- should be automatic if `alg'`, `fk` and `fK` are `k`-linear
       x' := x' k K x p -- compose with a le_sup_right.toRingHom
       hx' := sorry
       d' := sorry
-      hdd' := sorry
-      purelyInsep := sorry
+      hdd' := sorry -- uses `compositum_deg_le`
+      purelyInsep := sorry -- uses that `adjoinPthRoots` gives a purely inseparable extension
       insepDeg_eq_d := sorry
-      insepDeg_eq_d' := sorry
+      insepDeg_eq_d' := sorry -- should use definition of `d'`
     }
 
 example (k K : Type) [Field k] [Field K] [Algebra k K] : K →ₐ[k] AlgebraicClosure K :=
