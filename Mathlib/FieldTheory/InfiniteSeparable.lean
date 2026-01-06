@@ -736,9 +736,9 @@ theorem X_pow_sub_C_separable_iff {F : Type*} [Field F] {n : ℕ} (x : F) (hn : 
   have hDeg : (X ^ n - C x).natDegree = n := by simp
   exact not_isUnit_of_natDegree_pos (X ^ n - C x) (hDeg.symm ▸ hn) h
 
--- The minimal polynomial of a non pth power in a field of characteristic p is X ^ p - C α
+-- The minimal polynomial of a non `p`th power in a field of characteristic `p` is `X ^ p - C α`
 lemma minpoly_of_non_pth_power {k K : Type*} [Field k] [Field K] [Algebra k K] {p : ℕ} {α : k}
-    (hp : p.Prime) [ExpChar k p] (hα : ¬ ∃ β : k, β ^ p = α) (ρ : K)
+    (hp : p.Prime) [ExpChar k p] (hα : ¬ ∃ β : k, β ^ p = α) {ρ : K}
     (hρ : ρ ^ p = algebraMap k K α) :
     X ^ p - C α = minpoly k ρ := by
   have hIrred : Irreducible (X ^ p - C α) := by
@@ -752,8 +752,8 @@ lemma minpoly_of_non_pth_power {k K : Type*} [Field k] [Field K] [Algebra k K] {
 
 @[stacks 031V "(2)"]
 lemma pth_power_poly_imp_pth_power {k K : Type*} [Field k] [Field K] [Algebra k K]
-    [Algebra.IsAlgebraic k K] [Algebra.IsSeparable k K] (α : K) (P : Polynomial k)
-    (hP : P.aeval α = 0) (p : ℕ) (hp : p.Prime) [CharP k p] [ExpChar k p]
+    [Algebra.IsAlgebraic k K] [Algebra.IsSeparable k K] {α : K} (P : Polynomial k)
+    (hP : P.aeval α = 0) {p : ℕ} (hp : p.Prime) [CharP k p] [ExpChar k p]
     (hQfrob_eq_P : ∃ Q : Polynomial k, P = Polynomial.map (frobenius k p) Q)
     (hSep : P.Separable) :
     ∃ β : K, β ^ p = α := by
@@ -773,7 +773,7 @@ lemma pth_power_poly_imp_pth_power {k K : Type*} [Field k] [Field K] [Algebra k 
             aeval_algebraMap_eq_zero_iff]
         exact hP
       have _ : ExpChar K p := ExpChar.of_injective_algebraMap' k _
-      rw [minpoly_of_non_pth_power hp hα ρ hρ]
+      rw [minpoly_of_non_pth_power hp hα hρ]
       apply minpoly.dvd
       rw [← hRoot, mapAlg_eq_map, aeval_map_algebraMap]
     have hQSep : (mapAlg k K Q).Separable :=
@@ -791,11 +791,11 @@ lemma pth_power_poly_imp_pth_power {k K : Type*} [Field k] [Field K] [Algebra k 
 
 @[stacks 031V "(1)"]
 lemma pth_power_poly_imp_pth_power' {k K : Type*} [Field k] [Field K] [Algebra k K]
-    [Algebra.IsAlgebraic k K] [hSep : Algebra.IsSeparable k K] (α : K) (p : ℕ) (hp : p.Prime)
+    [Algebra.IsAlgebraic k K] [hSep : Algebra.IsSeparable k K] (α : K) {p : ℕ} (hp : p.Prime)
     [ExpChar k p] [CharP k p]
     (h_pth_power_coeff : ∃ Q : Polynomial k, ((minpoly k α)) = Polynomial.map (frobenius k p) Q) :
     ∃ β : K, β ^ p = α :=
-  pth_power_poly_imp_pth_power α (minpoly k α) (minpoly.aeval k α) p hp h_pth_power_coeff
+  pth_power_poly_imp_pth_power (minpoly k α) (minpoly.aeval k α) hp h_pth_power_coeff
     ((Algebra.isSeparable_def k K).mp hSep α)
 
 
