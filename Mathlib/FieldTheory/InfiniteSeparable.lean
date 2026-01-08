@@ -198,11 +198,11 @@ open IntermediateField
 -- of `k[x_i]` for some
 class IsPurelyTranscendental (k K : Type) [Field k] [Field K] [Algebra k K] where
   ι : Type
-  alg : Algebra (MvPolynomial ι k) K
+  [alg : Algebra (MvPolynomial ι k) K]
   -- The compatibility of the different algebra structures is not automatic, so we require the
   -- following to be a scalar tower:
-  IsScalarTower : IsScalarTower k (MvPolynomial ι k) K
-  IsFracRing : IsFractionRing (MvPolynomial ι k) K
+  [IsScalarTower : IsScalarTower k (MvPolynomial ι k) K]
+  [IsFracRing : IsFractionRing (MvPolynomial ι k) K]
 
 instance (k K : Type) [Field k] [Field K] [Algebra k K] [h : IsPurelyTranscendental k K] :
     Algebra (MvPolynomial h.ι k) K :=
@@ -252,21 +252,31 @@ lemma IsPurelyTranscendental.x_transcendence_basis (k K : Type) [Field k] [Field
 instance adjoin_transcendence_basis_purelyTranscendental (k K : Type) [Field k] [Field K]
     [Algebra k K] {ι : Type} (x : ι → K) (h : IsTranscendenceBasis k x) :
     IsPurelyTranscendental k (IntermediateField.adjoin k (Set.range x)) :=
-  {
-    ι := ι
-    alg := ((Subalgebra.inclusion (IntermediateField.algebra_adjoin_le_adjoin k (Set.range x)) :
+  letI alg := ((Subalgebra.inclusion (IntermediateField.algebra_adjoin_le_adjoin k (Set.range x)) :
           Algebra.adjoin k (Set.range x) →ₐ[k] IntermediateField.adjoin k (Set.range x)).comp
         (AlgebraicIndependent.aevalEquiv h.1)).toAlgebra
-    IsScalarTower := by
-      exact IsScalarTower.of_algHom
+  letI IsScalarTower := by
+    exact IsScalarTower.of_algHom
         ((Subalgebra.inclusion (IntermediateField.algebra_adjoin_le_adjoin k (Set.range x)) :
           Algebra.adjoin k (Set.range x) →ₐ[k] IntermediateField.adjoin k (Set.range x)).comp
         (AlgebraicIndependent.aevalEquiv h.1).toAlgHom)
+  {
+    ι := ι
+    alg
+    IsScalarTower
     IsFracRing := by
-      haveI : Algebra (MvPolynomial ι k) (IntermediateField.adjoin k (Set.range x)) := sorry
       haveI : FaithfulSMul (MvPolynomial ι k) ↥(IntermediateField.adjoin k (Set.range x)) := sorry
-
-      -- apply IsFractionRing.of_field (MvPolynomial ι k) ↥(IntermediateField.adjoin k (Set.range x))
+      apply IsFractionRing.of_field (MvPolynomial ι k) ↥(IntermediateField.adjoin k (Set.range x))
+      intro z
+      obtain ⟨r, hr, s, hs, hz⟩ := IntermediateField.mem_adjoin_iff_div.mp z.2
+      rw [Algebra.adjoin_eq_range, AlgHom.mem_range] at hr
+      rw [Algebra.adjoin_eq_range, AlgHom.mem_range] at hs
+      obtain ⟨a, ha⟩ := hr
+      obtain ⟨b, hb⟩ := hs
+      let g : MvPolynomial ι k ≃ₐ[k] MvPolynomial {x1 // x1 ∈ Set.range x} k := by sorry
+      use g.symm a
+      use g.symm b
+      -- rw [hz]
 
 
 -- IntermediateField.algebraAdjoinAdjoin.instIsFractionRingSubtypeMemSubalgebraAdjoinAdjoin could be useful
