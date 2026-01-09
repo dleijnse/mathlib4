@@ -34,6 +34,7 @@ the `p`-th roots of a subset.
 @[expose] public section
 
 open IntermediateField
+open MvPolynomial
 
 noncomputable section
 
@@ -42,13 +43,88 @@ variable (p : ℕ) [ExpChar k p]
 
 instance : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
 
-/-- Given a field `k` of exponential characteristic `p` and a subset `S` of `k`, the field
-`adjoin_pth_roots p S` is obtained by adjoining all `p`-th roots of elements of `S` to `k`. We
-construct this as an object of type `IntermediateField k (AlgebraicClosure k)`, which automatically
-gives us the structure of a field and of a `k`-algebra. -/
-def IntermediateField.adjoinPthRoots (S : Set k) : IntermediateField k (AlgebraicClosure k) :=
-  IntermediateField.adjoin k <|
-    (frobenius (AlgebraicClosure k) p) ⁻¹' ((algebraMap k (AlgebraicClosure k)) '' S)
+variable {A : Type} [CommRing A]
+variable (p : ℕ) [ExpChar A p]
+variable (S : Set A)
+
+def adjoinPthRootsIdeal : Ideal (MvPolynomial S A) :=
+  Ideal.span <| Set.range (fun (s : S) => (X s) ^ p - C s.1)
+
+-- TODO: need to quotient out by nilradical to get a field again if A is a field.
+def adjoinPthRoots : Type :=
+  MvPolynomial S A ⧸ adjoinPthRootsIdeal p S
+deriving Algebra A, Algebra (MvPolynomial S A), CommRing, IsScalarTower A (MvPolynomial S A)
+
+omit [ExpChar A p] in
+lemma algebraMap_eq_C_quot_mk (a : A) :
+    (algebraMap A (adjoinPthRoots p S)) a = Ideal.Quotient.mk (adjoinPthRootsIdeal p S) (C a) := by
+  rw [← MvPolynomial.algebraMap_eq, ← Ideal.Quotient.algebraMap_eq]
+  exact IsScalarTower.algebraMap_apply A (MvPolynomial (↑S) A) (adjoinPthRoots p S) a
+
+lemma algebraMap_inj : Function.Injective (algebraMap A (adjoinPthRoots p S)) := by
+  rw [RingHom.injective_iff_ker_eq_bot]
+  ext x
+
+  sorry
+
+instance adjoinPthRootsExpChar : ExpChar (adjoinPthRoots p S) p :=
+  expChar_of_injective_ringHom (algebraMap_inj p S) p
+
+
+omit [ExpChar A p] in
+lemma adjoinPthRootsIdeal_mem (s : S) : (X s) ^ p - C s.1 ∈ adjoinPthRootsIdeal p S :=
+  Ideal.mem_span_range_self
+
+lemma X_p_power_mem (s : S) :
+    frobenius (adjoinPthRoots p S) p (Ideal.Quotient.mk  _ (X s)) ∈ (algebraMap A _).range := by
+  rw [RingHom.mem_range]
+  use s
+  rw [frobenius_def, algebraMap_eq_C_quot_mk]
+  apply Eq.symm
+  erw [Ideal.Quotient.eq]
+  dsimp only
+  exact adjoinPthRootsIdeal_mem p S s
+
+lemma p_power_mem (x : adjoinPthRoots p S) :
+    frobenius (adjoinPthRoots p S) p x ∈ (algebraMap A _).range := by
+  let ⟨y, hy⟩ := Quot.exists_rep x
+  have h : y = ∑ v ∈ y.support, (monomial v) (coeff v y) := MvPolynomial.as_sum y
+  rw [← hy, h]
+  use ∑ v ∈ y.support, aeval (fun a ↦ a : S → A) (monomial v (coeff v y) ^ p)
+  -- rw [frobenius_def]
+  -- rw [map_sum]
+  rw [Submodule.Quotient.quot_mk_eq_mk, Ideal.Quotient.mk_eq_mk]
+  -- conv_rhs => rw [map_sum]
+  repeat rw [map_sum]
+  apply Finset.sum_congr rfl
+  intro v hv
+  simp only [aeval_eq_eval, map_pow]
+  repeat rw [MvPolynomial.monomial_eq]
+  rw [← frobenius_def]
+  simp only [map_mul, eval_C]
+
+  have h1 : (frobenius (adjoinPthRoots p S) p) ((algebraMap A (adjoinPthRoots p S)) (coeff v y)) =
+      (frobenius (adjoinPthRoots p S) p)
+        ((Ideal.Quotient.mk (adjoinPthRootsIdeal p S)) (C (coeff v y))) := by
+    sorry
+  rw [h1]
+  apply Mathlib.Tactic.LinearCombination.mul_const_eq
+  -- rw [Finsupp.map_prod]
+
+  sorry
+
+
+instance adjointPthRootsField [Field A] : Field (adjoinPthRoots p S) := by
+
+  sorry
+
+lemma adjoinPthRoots_finite_of_finite [Finite S] : Module.Finite A (adjoinPthRoots p S) := by
+
+  sorry
+
+instance adjoinPthRoots_purelyInseparable : IsPurelyInseparable A (adjoinPthRoots p S) := by
+
+  sorry
 
 lemma adjoinPthRoots_mono {S T : Set k} (hST : S ⊆ T) :
     adjoinPthRoots p S ≤ adjoinPthRoots p T :=
@@ -79,19 +155,6 @@ lemma adjoinPthRoots_finite_of_finite (S : Set k) [Finite S] :
   obtain ⟨y, hy⟩ := hs_mem
   rw [← hy.2]
   exact isIntegral_algebraMap
-
-/-- The field extension `(adjoin_pth_roots p S) / k` is purely inseparable. -/
-instance adjoinPthRoots_purelyInseparable (S : Set k) :
-    IsPurelyInseparable k (adjoinPthRoots p S) := by
-  unfold adjoinPthRoots
-  rw [IntermediateField.isPurelyInseparable_adjoin_iff_pow_mem k (AlgebraicClosure k) p]
-  intro s hs
-  use 1
-  simp_all only [Set.mem_preimage, Set.mem_image, pow_one, RingHom.mem_range]
-  obtain ⟨w, h1, h2⟩ := hs
-  use w
-  rw [h2]
-  rfl
 
 /-- If `y ∈ S`, then there is an element `x ∈ adjoin_pth_roots p S` with the property that
 `y = x ^ p`. -/
