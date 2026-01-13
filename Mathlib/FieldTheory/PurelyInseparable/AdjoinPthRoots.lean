@@ -55,6 +55,10 @@ def adjoinPthRoots : Type :=
   MvPolynomial S A ⧸ adjoinPthRootsIdeal p S
 deriving Algebra A, Algebra (MvPolynomial S A), CommRing, IsScalarTower A (MvPolynomial S A)
 
+def adjoinPthRootsReduced : Type :=
+  adjoinPthRoots p S ⧸ nilradical (adjoinPthRoots p S)
+deriving Algebra A, Algebra (adjoinPthRoots p S), CommRing
+
 omit [ExpChar A p] in
 lemma algebraMap_eq_C_quot_mk (a : A) :
     (algebraMap A (adjoinPthRoots p S)) a = Ideal.Quotient.mk (adjoinPthRootsIdeal p S) (C a) := by
@@ -89,33 +93,50 @@ lemma p_power_mem (x : adjoinPthRoots p S) :
     frobenius (adjoinPthRoots p S) p x ∈ (algebraMap A _).range := by
   let ⟨y, hy⟩ := Quot.exists_rep x
   have h : y = ∑ v ∈ y.support, (monomial v) (coeff v y) := MvPolynomial.as_sum y
-  rw [← hy, h]
-  use ∑ v ∈ y.support, aeval (fun a ↦ a : S → A) (monomial v (coeff v y) ^ p)
-  -- rw [frobenius_def]
-  -- rw [map_sum]
-  rw [Submodule.Quotient.quot_mk_eq_mk, Ideal.Quotient.mk_eq_mk]
-  -- conv_rhs => rw [map_sum]
+  rw [← hy, h, Submodule.Quotient.quot_mk_eq_mk, Ideal.Quotient.mk_eq_mk]
   repeat rw [map_sum]
-  apply Finset.sum_congr rfl
+  apply Subring.sum_mem (algebraMap A _).range
   intro v hv
-  simp only [aeval_eq_eval, map_pow]
-  repeat rw [MvPolynomial.monomial_eq]
-  rw [← frobenius_def]
-  simp only [map_mul, eval_C]
+  rw [MvPolynomial.monomial_eq]
+  repeat rw [map_mul]
+  apply Subring.mul_mem
+  · use frobenius A p (coeff v y)
+    rw [RingHom.map_frobenius]
+    rfl
+  · unfold Finsupp.prod
+    repeat rw [map_prod]
+    apply Subring.prod_mem
+    intro i hi
+    repeat rw [map_pow]
+    exact Subring.pow_mem _ (X_p_power_mem _ _ _) _
 
-  have h1 : (frobenius (adjoinPthRoots p S) p) ((algebraMap A (adjoinPthRoots p S)) (coeff v y)) =
-      (frobenius (adjoinPthRoots p S) p)
-        ((Ideal.Quotient.mk (adjoinPthRootsIdeal p S)) (C (coeff v y))) := by
-    sorry
-  rw [h1]
-  apply Mathlib.Tactic.LinearCombination.mul_const_eq
-  -- rw [Finsupp.map_prod]
+instance adjoinPthRoots_of_field_nilradical_maximal [Field A] :
+    (nilradical (adjoinPthRoots p S)).IsMaximal := by
 
   sorry
 
+example (R : Type) [CommRing R] (I : Ideal R) (h1 : I ≠ ⊤) (h : ∀ x : R, x ∉ I → IsUnit x) :
+    I.IsMaximal := by
+  refine Ideal.isMaximal_iff.mpr ?_
+  constructor
+  · rw [← Ideal.ne_top_iff_one]
+    assumption
+  · intro J x hIJ hxI hxJ
+    rw [← mul_one x] at hxJ
+    exact (Ideal.unit_mul_mem_iff_mem J (h x hxI)).mp hxJ
 
-instance adjointPthRootsField [Field A] : Field (adjoinPthRoots p S) := by
+instance adjointPthRootsReducedField [Field A] :
+    Field (adjoinPthRootsReduced p S) := by
+  unfold adjoinPthRootsReduced
+  apply Ideal.Quotient.field
 
+  /-refine Field.ofIsUnitOrEqZero ?_
+  intro a
+  rcases (eq_or_ne a 0) with (ha | ha)
+  · tauto
+  · left
+
+    sorry-/
   sorry
 
 lemma adjoinPthRoots_finite_of_finite [Finite S] : Module.Finite A (adjoinPthRoots p S) := by
