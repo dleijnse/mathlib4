@@ -61,18 +61,25 @@ section CommRing
 variable {A : Type} [CommRing A]
 variable (p : ℕ) [ExpChar A p]
 variable (S : Set A)
+variable {ι : Type} (x : ι → A)
 
 def adjoinPthRootsIdeal : Ideal (MvPolynomial S A) :=
   Ideal.span <| Set.range (fun (s : S) => (X s) ^ p - C s.1)
 
--- TODO: need to quotient out by nilradical to get a field again if A is a field.
+def adjoinPthRootsIdeal' : Ideal (MvPolynomial ι A) :=
+  Ideal.span <| Set.range (fun i => (X i) ^ p - C (x i))
+
 def adjoinPthRoots : Type :=
   MvPolynomial S A ⧸ adjoinPthRootsIdeal p S
 deriving CommRing, Algebra A, Algebra (MvPolynomial S A), IsScalarTower A (MvPolynomial S A)
 
-def adjoinPthRootsReduced : Type :=
-  adjoinPthRoots p S ⧸ nilradical (adjoinPthRoots p S)
-deriving Algebra A, Algebra (adjoinPthRoots p S), CommRing
+example (T : Set A) (hST : S ⊆ T) : MvPolynomial S A →ₐ[A] MvPolynomial T A := by exact?
+
+def adjoinPthRoots_induced_map (T : Set A) (hST : S ⊆ T) :
+    adjoinPthRoots p S →ₐ[A] adjoinPthRoots p T := by
+  unfold adjoinPthRoots
+
+  sorry
 
 omit [ExpChar A p] in
 lemma algebraMap_eq_C_quot_mk (a : A) :
@@ -146,11 +153,43 @@ instance adjoinPthRoots_finiteType [Finite S] : Algebra.FiniteType A (adjoinPthR
   infer_instance
 
 instance adjoinPthRoots_Integral : Algebra.IsIntegral A (adjoinPthRoots p S) :=
-  IsIntegral_of_p_power_mem p A (adjoinPthRoots p S) (p_power_mem p S)
+  IsIntegral_of_p_power_mem A (adjoinPthRoots p S) (p_power_mem p S)
 
 -- Do we even need this? Or will it be automatically inferred?
 lemma adjoinPthRoots_finite_of_finite [Finite S] : Module.Finite A (adjoinPthRoots p S) :=
   Algebra.IsIntegral.finite
+
+def adjoinPthRootsReduced : Type :=
+  adjoinPthRoots p S ⧸ nilradical (adjoinPthRoots p S)
+deriving Algebra A, Algebra (adjoinPthRoots p S), CommRing, IsScalarTower A (adjoinPthRoots p S)
+
+def adjoinPthRootsReduced_induced_map (T : Set A) (hST : S ⊆ T) :
+    adjoinPthRoots p S →ₐ[A] adjoinPthRoots p T := sorry
+
+lemma adjoinPthRootsReduced_algebraMap_injective [IsReduced A] :
+    Function.Injective (algebraMap A (adjoinPthRootsReduced p S)) := by
+  sorry
+
+lemma adjoinPthRoots_adjoinPthRootsReduced_algebraMap_surjective :
+    Function.Surjective (algebraMap (adjoinPthRoots p S) (adjoinPthRootsReduced p S)) := by
+  unfold adjoinPthRootsReduced
+  rw [Ideal.Quotient.algebraMap_eq]
+  exact Ideal.Quotient.mk_surjective
+
+instance adjoinPthRootsReducedExpChar [IsReduced A] :
+    ExpChar (adjoinPthRootsReduced p S) p :=
+  expChar_of_injective_ringHom (adjoinPthRootsReduced_algebraMap_injective p S) p
+
+-- I think this actually doesn't need the assumption that A is reduced, but we now have it so that
+-- we get the ExpChar p instance on adjoinPthRootsReduced p S.
+lemma p_power_mem_reduced [IsReduced A] (x : adjoinPthRootsReduced p S) :
+    frobenius (adjoinPthRootsReduced p S) p x ∈ (algebraMap A _).range := by
+  obtain ⟨y, hy⟩ := Set.mem_range.mp
+      ((adjoinPthRoots_adjoinPthRootsReduced_algebraMap_surjective p S) x)
+  obtain ⟨z, hz⟩ := p_power_mem p S y
+  use z
+  rw [IsScalarTower.algebraMap_eq A (adjoinPthRoots p S) (adjoinPthRootsReduced p S)]
+  rw [RingHom.coe_comp, Function.comp_apply, hz, ← hy, RingHom.map_frobenius]
 
 end CommRing
 
@@ -185,77 +224,11 @@ instance adjointPthRootsReducedField :
   unfold adjoinPthRootsReduced
   apply Ideal.Quotient.field
 
-instance adjoinPthRoots_purelyInseparable : IsPurelyInseparable k (adjoinPthRoots p S) := by
-  rw [isPurelyInseparable_iff_pow_mem]
-  sorry
+instance adjoinPthRoots_purelyInseparable : IsPurelyInseparable k (adjoinPthRootsReduced p S) := by
+  rw [isPurelyInseparable_iff_pow_mem k p]
+  intro x
+  use 1
+  rw [pow_one, ← frobenius_def]
+  exact p_power_mem_reduced p S x
 
 end Field
-
-
--- Old stuff:
-
-lemma adjoinPthRoots_mono {S T : Set k} (hST : S ⊆ T) :
-    adjoinPthRoots p S ≤ adjoinPthRoots p T :=
-  IntermediateField.adjoin.mono k _ _ <| Set.preimage_mono <| Set.image_mono hST
-
-/-- If the set `S` whose `p`-th roots we adjoin is finite, then the obtained field extension
-`(adjoin_pth_roots p S) / k` is finite. -/
-lemma adjoinPthRoots_finite_of_finite (S : Set k) [Finite S] :
-    FiniteDimensional k (adjoinPthRoots p S) := by
-  -- The set of elements to adjoin to `k` is finite:
-  have hFin : Finite ((frobenius (AlgebraicClosure k) p) ⁻¹'
-      ((algebraMap k (AlgebraicClosure k)) '' S)) := by
-    have hFin' : Finite ((algebraMap k (AlgebraicClosure k)) '' S) := by infer_instance
-    exact Set.Finite.preimage (Set.injOn_of_injective (frobenius_inj _ _)) (hFin')
-  apply IntermediateField.finiteDimensional_adjoin
-  -- It remains to show that every element of the set
-  -- `` ((frobenius (AlgebraicClosure k) p) ⁻¹' ((algebraMap k (AlgebraicClosure k)) '' S))``
-  -- is integral over `k`.
-  intro s hs
-  apply IsIntegral.of_pow (n := p) (expChar_pos k p)
-  have hs_mem : s ^ p ∈ (algebraMap k (AlgebraicClosure k))'' S := by
-    simp_all only [Set.mem_preimage, Set.mem_image]
-    obtain ⟨w, hw⟩ := hs
-    use w
-    rw [hw.2]
-    exact ⟨hw.1, rfl⟩
-  rw [Set.mem_image] at hs_mem
-  obtain ⟨y, hy⟩ := hs_mem
-  rw [← hy.2]
-  exact isIntegral_algebraMap
-
-/-- If `y ∈ S`, then there is an element `x ∈ adjoin_pth_roots p S` with the property that
-`y = x ^ p`. -/
-lemma adjoinPthRoots_mem_frobenius_img {S : Set k} {y : k} (hy : y ∈ S) :
-    algebraMap k (AlgebraicClosure k) y ∈ Subfield.map (frobenius (AlgebraicClosure k) p)
-      (adjoinPthRoots p S).toSubfield := by
-  use (frobeniusEquiv (AlgebraicClosure k) p).symm (algebraMap k _ y)
-  refine ⟨?_, by simp⟩
-  apply Subfield.mem_closure_of_mem
-  right
-  use y
-  exact ⟨hy, by simp⟩
-
--- a relative version of `adjoin_pth_roots.frob_img_mem`, which allows for
--- `adjoin_pth_roots` to be embedded in the algebraic closure of a bigger field.
-lemma adjoinPthRoots_mem_frobenius_img' (K : Type*) [Field K] [Algebra k K] {S : Set k} {y : K}
-    (hy : y ∈ (algebraMap k K) '' S) :
-    haveI : ExpChar (AlgebraicClosure K) p := ExpChar.of_injective_algebraMap' k _
-    algebraMap K (AlgebraicClosure K) y ∈ Subfield.map (frobenius (AlgebraicClosure K) p)
-      ((adjoinPthRoots p S).map IsAlgClosed.lift).toSubfield := by
-  haveI : ExpChar (AlgebraicClosure K) p := ExpChar.of_injective_algebraMap' k _
-  unfold adjoinPthRoots
-  rw [Subfield.mem_map]
-  use (frobeniusEquiv (AlgebraicClosure K) p).symm (algebraMap K _ y)
-  refine ⟨?_, by simp⟩
-  simp only [toSubfield_map, Subfield.mem_map, RingHom.coe_coe]
-  obtain ⟨z, hz⟩ := (Set.mem_image _ _ _).mp hy
-  use (frobeniusEquiv (AlgebraicClosure k) p).symm (algebraMap k _ z)
-  constructor
-  · apply Subfield.mem_closure_of_mem
-    simp only [Set.mem_union, Set.mem_range, Set.mem_preimage, frobenius_apply_frobeniusEquiv_symm,
-      Set.mem_image, algebraMap.coe_inj, exists_eq_right]
-    exact Or.inr hz.left
-  · rw [← hz.2, ← RingHom.coe_coe, RingHom.map_frobeniusEquiv_symm, RingHom.coe_coe,
-      AlgHom.commutes]
-    rfl
