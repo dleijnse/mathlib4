@@ -33,15 +33,30 @@ the `p`-th roots of a subset.
 
 @[expose] public section
 
+-- some prerequisites:
+section Integral
+
+open Polynomial
+
+lemma IsIntegral_of_p_power_mem (R S : Type) [CommRing R] [CommRing S] [Algebra R S] {p : ℕ}
+    [ExpChar S p] (hp : ∀ x : S, frobenius S p x ∈ (algebraMap R S).range) :
+    Algebra.IsIntegral R S := by
+  rw [Algebra.isIntegral_iff]
+  intro x
+  obtain ⟨y, hy⟩ := hp x
+  use X ^ p - C y
+  rw [frobenius_def] at hy
+  simp [Polynomial.Monic.def, Nat.ne_zero_iff_zero_lt.mp (expChar_ne_zero S p), hy]
+
+end Integral
+
+
 open IntermediateField
 open MvPolynomial
 
 noncomputable section
 
-variable {k : Type*} [Field k]
-variable (p : ℕ) [ExpChar k p]
-
-instance : ExpChar (AlgebraicClosure k) p := ExpChar.of_injective_algebraMap' k _
+section CommRing
 
 variable {A : Type} [CommRing A]
 variable (p : ℕ) [ExpChar A p]
@@ -53,7 +68,7 @@ def adjoinPthRootsIdeal : Ideal (MvPolynomial S A) :=
 -- TODO: need to quotient out by nilradical to get a field again if A is a field.
 def adjoinPthRoots : Type :=
   MvPolynomial S A ⧸ adjoinPthRootsIdeal p S
-deriving Algebra A, Algebra (MvPolynomial S A), CommRing, IsScalarTower A (MvPolynomial S A)
+deriving CommRing, Algebra A, Algebra (MvPolynomial S A), IsScalarTower A (MvPolynomial S A)
 
 def adjoinPthRootsReduced : Type :=
   adjoinPthRoots p S ⧸ nilradical (adjoinPthRoots p S)
@@ -71,9 +86,14 @@ lemma algebraMap_inj : Function.Injective (algebraMap A (adjoinPthRoots p S)) :=
 
   sorry
 
+example (X Y : Type) (f : X → Y) (hf : f.Injective) [Nontrivial X] : Nontrivial Y := by
+  exact Function.Injective.nontrivial hf
+
+instance adjoinPthRoots_nontrivial [Nontrivial A] : Nontrivial (adjoinPthRoots p S) :=
+  Function.Injective.nontrivial <| algebraMap_inj p S
+
 instance adjoinPthRootsExpChar : ExpChar (adjoinPthRoots p S) p :=
   expChar_of_injective_ringHom (algebraMap_inj p S) p
-
 
 omit [ExpChar A p] in
 lemma adjoinPthRootsIdeal_mem (s : S) : (X s) ^ p - C s.1 ∈ adjoinPthRootsIdeal p S :=
@@ -110,42 +130,69 @@ lemma p_power_mem (x : adjoinPthRoots p S) :
     repeat rw [map_pow]
     exact Subring.pow_mem _ (X_p_power_mem _ _ _) _
 
-instance adjoinPthRoots_of_field_nilradical_maximal [Field A] :
+lemma units_complement_maximal (R : Type) [CommRing R] (I : Ideal R) (h1 : 1 ∉ I)
+    (h : ∀ x : R, x ∉ I → IsUnit x) : I.IsMaximal := by
+  refine Ideal.isMaximal_iff.mpr ⟨h1, ?_⟩
+  intro J x hIJ hxI hxJ
+  rw [← mul_one x] at hxJ
+  exact (Ideal.unit_mul_mem_iff_mem J (h x hxI)).mp hxJ
+
+lemma one_not_mem_nilradical (R : Type) [CommSemiring R] [Nontrivial R] : 1 ∉ nilradical R := by
+  rw [mem_nilradical]
+  exact not_isNilpotent_one
+
+instance adjoinPthRoots_finiteType [Finite S] : Algebra.FiniteType A (adjoinPthRoots p S) := by
+  unfold adjoinPthRoots
+  infer_instance
+
+instance adjoinPthRoots_Integral : Algebra.IsIntegral A (adjoinPthRoots p S) :=
+  IsIntegral_of_p_power_mem p A (adjoinPthRoots p S) (p_power_mem p S)
+
+-- Do we even need this? Or will it be automatically inferred?
+lemma adjoinPthRoots_finite_of_finite [Finite S] : Module.Finite A (adjoinPthRoots p S) :=
+  Algebra.IsIntegral.finite
+
+end CommRing
+
+section Field
+
+variable {k : Type} [Field k]
+variable (p : ℕ) [ExpChar k p]
+variable (S : Set k)
+
+instance adjoinPthRoots_of_field_nilradical_maximal [ExpChar k p] :
     (nilradical (adjoinPthRoots p S)).IsMaximal := by
+  apply units_complement_maximal
+  · exact one_not_mem_nilradical _
+  · intro x hx
+    -- use that x ^ p is a nonzero element of A. Since A is a field, x ^ p is a unit
+    rw [← isUnit_pow_iff (expChar_ne_zero k p)]
+    have hNonZero : x ^ p ≠ 0 := by
+      rw [not_iff_not.mpr mem_nilradical] at hx
+      tauto
+    obtain ⟨y, hy⟩ := p_power_mem p S x
+    rw [frobenius_def] at hy
+    have hyz : y ≠ 0 := by
+      intro h
+      apply hNonZero
+      rw [← hy, h]
+      exact map_zero _
+    rw [← hy]
+    exact (isUnit_iff_ne_zero.mpr hyz).map (algebraMap _ _)
 
-  sorry
-
-example (R : Type) [CommRing R] (I : Ideal R) (h1 : I ≠ ⊤) (h : ∀ x : R, x ∉ I → IsUnit x) :
-    I.IsMaximal := by
-  refine Ideal.isMaximal_iff.mpr ?_
-  constructor
-  · rw [← Ideal.ne_top_iff_one]
-    assumption
-  · intro J x hIJ hxI hxJ
-    rw [← mul_one x] at hxJ
-    exact (Ideal.unit_mul_mem_iff_mem J (h x hxI)).mp hxJ
-
-instance adjointPthRootsReducedField [Field A] :
+instance adjointPthRootsReducedField :
     Field (adjoinPthRootsReduced p S) := by
   unfold adjoinPthRootsReduced
   apply Ideal.Quotient.field
 
-  /-refine Field.ofIsUnitOrEqZero ?_
-  intro a
-  rcases (eq_or_ne a 0) with (ha | ha)
-  · tauto
-  · left
-
-    sorry-/
+instance adjoinPthRoots_purelyInseparable : IsPurelyInseparable k (adjoinPthRoots p S) := by
+  rw [isPurelyInseparable_iff_pow_mem]
   sorry
 
-lemma adjoinPthRoots_finite_of_finite [Finite S] : Module.Finite A (adjoinPthRoots p S) := by
+end Field
 
-  sorry
 
-instance adjoinPthRoots_purelyInseparable : IsPurelyInseparable A (adjoinPthRoots p S) := by
-
-  sorry
+-- Old stuff:
 
 lemma adjoinPthRoots_mono {S T : Set k} (hST : S ⊆ T) :
     adjoinPthRoots p S ≤ adjoinPthRoots p T :=
