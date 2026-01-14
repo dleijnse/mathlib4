@@ -273,9 +273,13 @@ instance adjoin_transcendence_basis_purelyTranscendental (k K : Type) [Field k] 
       rw [Algebra.adjoin_eq_range, AlgHom.mem_range] at hs
       obtain ⟨a, ha⟩ := hr
       obtain ⟨b, hb⟩ := hs
-      let g : MvPolynomial ι k ≃ₐ[k] MvPolynomial {x1 // x1 ∈ Set.range x} k := by sorry
+      have hInj : x.Injective := by sorry
+      let g : MvPolynomial ι k ≃ₐ[k] MvPolynomial {x1 // x1 ∈ Set.range x} k :=
+        MvPolynomial.renameEquiv k (Equiv.ofInjective x hInj)
       use g.symm a
       use g.symm b
+      -- rw [← ha] at hz
+      -- rw [← hb] at hz
       -- rw [hz]
 
 
@@ -283,6 +287,11 @@ instance adjoin_transcendence_basis_purelyTranscendental (k K : Type) [Field k] 
       sorry
   }
 
+example (k K : Type) [Field k] [Field K]
+    [Algebra k K] {ι : Type} (x : ι → K) (h : AlgebraicIndependent k x) : x.Injective := by
+  rw [algebraicIndependent_iff_injective_aeval] at h
+
+  sorry
 
 
 /-
