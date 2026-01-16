@@ -232,9 +232,6 @@ lemma universe_thing (ι : Type w) (Pres : PurelyTranscendentalPresentation k K 
     IsPurelyTranscendental k K := by
   sorry
 
-instance (Pres : PurelyTranscendentalPresentation k K ι) :
-    IsScalarTower k Pres.Ring K := Pres.IsScalarTower
-
 def IsPurelyTranscendental.mvPolyFracRingEquiv (Pres : PurelyTranscendentalPresentation k K ι) :
     FractionRing Pres.Ring ≃ₐ[Pres.Ring] K := FractionRing.algEquiv _ _
 
@@ -250,7 +247,7 @@ lemma IsPurelyTranscendental.x_comparison (Pres : IsPurelyTranscendental k K ι)
   simp
 -/
 
-lemma IsTranscendenceBasis.mvPolynomialFractionField (ι : Type) (k : Type) [Field k] :
+lemma IsTranscendenceBasis.mvPolynomialFractionField (ι : Type*) (k : Type*) [Field k] :
     IsTranscendenceBasis k
       (algebraMap (MvPolynomial ι k) (FractionRing (MvPolynomial ι k)) ∘ MvPolynomial.X) := by
   have _ : Algebra.IsAlgebraic (MvPolynomial ι k) (FractionRing (MvPolynomial ι k)) := by
@@ -268,73 +265,47 @@ lemma IsTranscendenceBasis.mvPolynomialFractionField (ι : Type) (k : Type) [Fie
   exact AlgEquiv.isTranscendenceBasis ((h.mvPolyFracRingEquiv k K).restrictScalars k)
     (IsTranscendenceBasis.mvPolynomialFractionField h.ι k)-/
 
-def Equiv_PurelyTranscendentalPresentation (ι : Type*) (k K K' : Type*) [Field k] [Field K]
+-- The following two are API lemmas and should be placed in a different file
+lemma FractionRing_of_equiv {K L : Type*} [Field K] [Field L] (f : K ≃+* L) :
+    letI : Algebra K L := RingHom.toAlgebra f
+    IsFractionRing K L := by
+  letI : Algebra K L := RingHom.toAlgebra f
+  apply IsFractionRing.of_field
+  intro z
+  use f.symm z, 1
+  have h : algebraMap K L = f := rfl
+  simp [h]
+
+lemma IsFractionRing_of_algEquiv {R K K' : Type*} [CommRing R] [Field K] [Field K']
+    [Algebra R K] [Algebra R K'] (f : K ≃ₐ[R] K') (h : IsFractionRing R K) :
+    IsFractionRing R K' := by
+  letI : Algebra K K' := RingHom.toAlgebra f
+  letI : IsFractionRing K K' := FractionRing_of_equiv f.toRingEquiv
+  letI : IsScalarTower R K K' := IsScalarTower.of_algHom f.toAlgHom
+  exact IsFractionRing.trans R K K'
+
+def Equiv_PurelyTranscendentalPresentation (ι : Type*) {k K K' : Type*} [Field k] [Field K]
     [Field K'] [Algebra k K] [Algebra k K'] (e : K ≃ₐ[k] K')
     (Pres : PurelyTranscendentalPresentation k K ι) : PurelyTranscendentalPresentation k K' ι :=
-  let alg : Algebra (MvPolynomial ι k) K' :=
+  let alg : Algebra Pres.Ring K' :=
     RingHom.toAlgebra (e.toRingHom.comp (Pres.alg).algebraMap)
   let g : Pres.Ring →ₐ[k] K := Algebra.algHom k Pres.Ring K
   let f : Pres.Ring →ₐ[k] K' := (e.toAlgHom).comp g
   let IsScalarTower : IsScalarTower k Pres.Ring K' :=
-    IsScalarTower.of_algHom sorry
+    IsScalarTower.of_algHom f
+  have h : ∀ s : Pres.Ring,
+      e.toRingEquiv ((algebraMap Pres.Ring K) s) = (algebraMap Pres.Ring K') s := by
+    intro s; rfl
+  let e' : K ≃ₐ[Pres.Ring] K' := AlgEquiv.ofRingEquiv h
   {
-    IsFracRing := sorry
+    IsFracRing := @IsFractionRing_of_algEquiv _ _ _ _ _ _ (Pres.alg) _ e' Pres.IsFracRing
   }
-
-
 
 lemma Equiv_PurelyTranscendental (k K K' : Type*) [Field k] [Field K] [Field K'] [Algebra k K]
-    [Algebra k K'] (e : K ≃ₐ[k] K') [IsPurelyTranscendental k K] :
+    [Algebra k K'] (e : K ≃ₐ[k] K') [h : IsPurelyTranscendental k K] :
     IsPurelyTranscendental k K' := by
-
-  sorry
-
-/-
-instance adjoin_transcendence_basis_purelyTranscendental (k K : Type) [Field k] [Field K]
-    [Algebra k K] {ι : Type} (x : ι → K) (h : IsTranscendenceBasis k x) :
-    IsPurelyTranscendental k (IntermediateField.adjoin k (Set.range x)) :=
-  letI alg := ((Subalgebra.inclusion (IntermediateField.algebra_adjoin_le_adjoin k (Set.range x)) :
-          Algebra.adjoin k (Set.range x) →ₐ[k] IntermediateField.adjoin k (Set.range x)).comp
-        (AlgebraicIndependent.aevalEquiv h.1)).toAlgebra
-  letI IsScalarTower := by
-    exact IsScalarTower.of_algHom
-        ((Subalgebra.inclusion (IntermediateField.algebra_adjoin_le_adjoin k (Set.range x)) :
-          Algebra.adjoin k (Set.range x) →ₐ[k] IntermediateField.adjoin k (Set.range x)).comp
-        (AlgebraicIndependent.aevalEquiv h.1).toAlgHom)
-  {
-    ι := ι
-    alg
-    IsScalarTower
-    IsFracRing := by -- use adjoin commutes with FractionField
-      haveI : FaithfulSMul (MvPolynomial ι k) ↥(IntermediateField.adjoin k (Set.range x)) := sorry
-      apply IsFractionRing.of_field (MvPolynomial ι k) ↥(IntermediateField.adjoin k (Set.range x))
-      intro z
-      obtain ⟨r, hr, s, hs, hz⟩ := IntermediateField.mem_adjoin_iff_div.mp z.2
-      rw [Algebra.adjoin_eq_range, AlgHom.mem_range] at hr
-      rw [Algebra.adjoin_eq_range, AlgHom.mem_range] at hs
-      obtain ⟨a, ha⟩ := hr
-      obtain ⟨b, hb⟩ := hs
-      have hInj : x.Injective := by sorry
-      -- use AlgebraicIndependent.aevalEquiv
-      let g : MvPolynomial ι k ≃ₐ[k] MvPolynomial {x1 // x1 ∈ Set.range x} k :=
-        MvPolynomial.renameEquiv k (Equiv.ofInjective x hInj)
-      use g.symm a
-      use g.symm b
-      -- rw [← ha] at hz
-      -- rw [← hb] at hz
-      -- rw [hz]
-
-
--- IntermediateField.algebraAdjoinAdjoin.instIsFractionRingSubtypeMemSubalgebraAdjoinAdjoin could be useful
-      sorry
-  }
--/
-
-example (k K : Type) [Field k] [Field K]
-    [Algebra k K] {ι : Type} (x : ι → K) (h : AlgebraicIndependent k x) : x.Injective := by
-  rw [algebraicIndependent_iff_injective_aeval] at h
-
-  sorry
+  obtain ⟨ι, hι⟩ := h.exists_PurelyTranscendentalPresentation
+  exact universe_thing k K' ι <| Equiv_PurelyTranscendentalPresentation ι e <| Classical.choice hι
 
 end PurelyTranscendental
 
