@@ -113,10 +113,25 @@ deriving CommRing, Algebra A, Algebra (MvPolynomial ι A), IsScalarTower A (MvPo
 example (i j : Type) (f : i → j) : MvPolynomial i A →ₐ[A] MvPolynomial j A :=
   MvPolynomial.rename f
 
-/- def adjoinPthRoots_induced_map (T : Set A) (hST : S ⊆ T) :
-    adjoinPthRoots p S →ₐ[A] adjoinPthRoots p T := by
-  unfold adjoinPthRoots
-  sorry-/
+omit [ExpChar A p] in
+lemma adjoinPthRootsIdeal_map {κ : Type} {y : κ → A} (f : ι → κ) (h : y ∘ f = x) :
+    (adjoinPthRootsIdeal p x).map (MvPolynomial.rename f) ≤ adjoinPthRootsIdeal p y := by
+  unfold adjoinPthRootsIdeal
+  rw [Ideal.map_span]
+  rw [← h]
+  simp only [Function.comp_apply]
+  apply Ideal.span_mono
+  intro t ht
+  aesop
+
+example {κ : Type} {y : κ → A} (f : ι → κ) (h : y ∘ f = x) :
+    MvPolynomial ι A →ₐ[A] MvPolynomial κ A ⧸ adjoinPthRootsIdeal p y :=
+  (Ideal.Quotient.mkₐ A (adjoinPthRootsIdeal p y)).comp <| MvPolynomial.rename f
+
+def adjoinPthRoots_induced_map {κ : Type} {y : κ → A} (f : ι → κ) (h : y ∘ f = x) :
+    adjoinPthRoots p x →ₐ[A] adjoinPthRoots p y :=
+  Ideal.Quotient.liftₐ (adjoinPthRootsIdeal p x)
+    ((Ideal.Quotient.mkₐ A (adjoinPthRootsIdeal p y)).comp <| MvPolynomial.rename f) sorry
 
 omit [ExpChar A p] in
 lemma algebraMap_eq_C_quot_mk (a : A) :
