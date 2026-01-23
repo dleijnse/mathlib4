@@ -224,21 +224,42 @@ instance (Pres : PurelyTranscendentalPresentation k K ι) : IsScalarTower k Pres
 instance (Pres : PurelyTranscendentalPresentation k K ι) :
   IsFractionRing Pres.Ring K := Pres.IsFracRing
 
+def PurelyTranscendentalPresentation_of_equiv (ι' : Type*) (e : ι ≃ ι')
+    (Pres : PurelyTranscendentalPresentation k K ι) :
+    PurelyTranscendentalPresentation k K ι' :=
+  let alg : Algebra (MvPolynomial ι' k) K :=
+    RingHom.toAlgebra ((algebraMap Pres.Ring K).comp (MvPolynomial.rename e.symm).toRingHom)
+  {
+    IsScalarTower := IsScalarTower.of_algHom ((IsScalarTower.toAlgHom k Pres.Ring K).comp
+      (MvPolynomial.rename e.symm))
+    IsFracRing := by
+      rw [← @IsFractionRing.isFractionRing_iff_of_base_ringEquiv Pres.Ring _ K _ _
+        (MvPolynomial ι' k) _ (MvPolynomial.renameEquiv k e).toRingEquiv]
+      exact Pres.IsFracRing
+  }
+
+def PurelyTranscendentalPresentation.x (Pres : PurelyTranscendentalPresentation k K ι) :
+    ι → K := algebraMap Pres.Ring K ∘ MvPolynomial.X
+
+lemma PurelyTranscendentalPresentation.x_injective (Pres : PurelyTranscendentalPresentation k K ι) :
+    Function.Injective Pres.x :=
+  Function.Injective.comp (IsFractionRing.injective Pres.Ring K) MvPolynomial.X_injective
+
 class IsPurelyTranscendental (k : Type*) (K : Type v) [Field k] [Field K] [Algebra k K] where
   exists_PurelyTranscendentalPresentation :
     ∃ ι : Type v, Nonempty (PurelyTranscendentalPresentation k K ι)
 
-lemma universe_thing (ι : Type w) (Pres : PurelyTranscendentalPresentation k K ι) :
-    IsPurelyTranscendental k K := by
-  sorry
+lemma universe_thing (ι : Type w) (k : Type u) (K : Type v) [Field k] [Field K] [Algebra k K]
+    (Pres : PurelyTranscendentalPresentation k K ι) : IsPurelyTranscendental k K := by
+  have hιSmall : Small.{v, w} ι := small_of_injective Pres.x_injective
+  use Shrink ι
+  exact Nonempty.intro <|
+    PurelyTranscendentalPresentation_of_equiv k K ι (Shrink ι) (equivShrink ι) Pres
 
 def IsPurelyTranscendental.mvPolyFracRingEquiv (Pres : PurelyTranscendentalPresentation k K ι) :
     FractionRing Pres.Ring ≃ₐ[Pres.Ring] K := FractionRing.algEquiv _ _
 
 /-
-def IsPurelyTranscendental.x (Pres : PurelyTranscendentalPresentation k K ι) : ι → K :=
-  algebraMap (MvPolynomial ι k) K ∘ MvPolynomial.X
-
 lemma IsPurelyTranscendental.x_comparison (Pres : IsPurelyTranscendental k K ι) :
     h.x = h.mvPolyFracRingEquiv ∘
       algebraMap (MvPolynomial ι k) (FractionRing (MvPolynomial ι k)) ∘ MvPolynomial.X := by
@@ -305,7 +326,7 @@ lemma Equiv_PurelyTranscendental (k K K' : Type*) [Field k] [Field K] [Field K']
     [Algebra k K'] (e : K ≃ₐ[k] K') [h : IsPurelyTranscendental k K] :
     IsPurelyTranscendental k K' := by
   obtain ⟨ι, hι⟩ := h.exists_PurelyTranscendentalPresentation
-  exact universe_thing k K' ι <| Equiv_PurelyTranscendentalPresentation ι e <| Classical.choice hι
+  exact universe_thing ι k K' <| Equiv_PurelyTranscendentalPresentation ι e <| Classical.choice hι
 
 end PurelyTranscendental
 
