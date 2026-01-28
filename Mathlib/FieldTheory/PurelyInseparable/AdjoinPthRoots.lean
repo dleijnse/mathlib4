@@ -97,11 +97,7 @@ section CommRing
 
 variable {A : Type} [CommRing A]
 variable (p : ℕ) [ExpChar A p]
--- variable (S : Set A)
 variable {ι : Type} (x : ι → A)
-
---def adjoinPthRootsIdeal : Ideal (MvPolynomial S A) :=
---  Ideal.span <| Set.range (fun (s : S) => (X s) ^ p - C s.1)
 
 def adjoinPthRootsIdeal : Ideal (MvPolynomial ι A) :=
   Ideal.span <| Set.range (fun i => (X i) ^ p - C (x i))
@@ -124,14 +120,23 @@ lemma adjoinPthRootsIdeal_map {κ : Type} {y : κ → A} (f : ι → κ) (h : y 
   intro t ht
   aesop
 
-example {κ : Type} {y : κ → A} (f : ι → κ) (h : y ∘ f = x) :
+omit [ExpChar A p] in
+lemma adjoinPthRootsIdeal_map' {κ : Type} {y : κ → A} {f : ι → κ} (h : y ∘ f = x) :
+    ∀ a ∈ adjoinPthRootsIdeal p x,
+      ((Ideal.Quotient.mkₐ A (adjoinPthRootsIdeal p y)).comp (rename f)) a = 0 := by
+  intro a ha
+  rw [AlgHom.comp_apply, ← RingHom.mem_ker, AlgHom.ker_coe, Ideal.Quotient.mkₐ_ker]
+  exact adjoinPthRootsIdeal_map p x f h <| Ideal.mem_map_of_mem (rename f) ha
+
+example {κ : Type} {y : κ → A} (f : ι → κ) :
     MvPolynomial ι A →ₐ[A] MvPolynomial κ A ⧸ adjoinPthRootsIdeal p y :=
   (Ideal.Quotient.mkₐ A (adjoinPthRootsIdeal p y)).comp <| MvPolynomial.rename f
 
 def adjoinPthRoots_induced_map {κ : Type} {y : κ → A} (f : ι → κ) (h : y ∘ f = x) :
     adjoinPthRoots p x →ₐ[A] adjoinPthRoots p y :=
   Ideal.Quotient.liftₐ (adjoinPthRootsIdeal p x)
-    ((Ideal.Quotient.mkₐ A (adjoinPthRootsIdeal p y)).comp <| MvPolynomial.rename f) sorry
+    ((Ideal.Quotient.mkₐ A (adjoinPthRootsIdeal p y)).comp <| MvPolynomial.rename f)
+      (adjoinPthRootsIdeal_map' p x h)
 
 omit [ExpChar A p] in
 lemma algebraMap_eq_C_quot_mk (a : A) :
@@ -139,6 +144,71 @@ lemma algebraMap_eq_C_quot_mk (a : A) :
   rw [← MvPolynomial.algebraMap_eq, ← Ideal.Quotient.algebraMap_eq]
   exact IsScalarTower.algebraMap_apply A (MvPolynomial ι A) (adjoinPthRoots p x) a
 
+lemma algebraMap_inj_fin' [Fintype ι] : Function.Injective (algebraMap A (adjoinPthRoots p x)) := by
+  induction hcard : Fintype.card ι generalizing ι
+  · sorry
+  · expose_names
+
+    sorry
+
+variable {κ : Type} (y : κ → A)
+
+def adjoinPthRoots_sum_right_x : ι ⊕ κ → adjoinPthRoots p x :=
+  Sum.elim (algebraMap A (adjoinPthRoots p x) ∘ x) (algebraMap A (adjoinPthRoots p x) ∘ y)
+
+example : ι → ι ⊕ κ := Sum.inl
+
+example : MvPolynomial (ι ⊕ κ) A ≃+* MvPolynomial ι (MvPolynomial κ A) := sumRingEquiv A ι κ
+
+lemma adjoinPthRoots_ideal_sum : adjoinPthRootsIdeal p (Sum.elim x y) =
+    adjoinPthRootsIdeal p x ⊔ adjoinPthRootsIdeal p y := by
+  sorry
+
+def adjoinPthRoots_of_adjoinPthRoots_equiv :
+    adjoinPthRoots p (Sum.elim x y) ≃+*
+      adjoinPthRoots p (adjoinPthRoots_sum_right_x p x y) := by
+  unfold adjoinPthRoots
+  unfold adjoinPthRoots_sum_right_x
+
+  -- use the following:
+  -- MvPolynomial.quotientEquivQuotientMvPolynomial
+  -- MvPolynomial.sumAlgEquiv
+
+
+  sorry
+
+open Classical in
+lemma algebraMap_inj_fin'' (s : Finset ι) (x : s → A) :
+    Function.Injective (algebraMap A (adjoinPthRoots p x)) := by
+  induction hcard : Finset.card s generalizing s
+  · sorry
+  · expose_names
+    rw [Finset.card_eq_succ] at hcard
+    obtain ⟨a, t, hat, hins, htcard⟩ := hcard
+    have hIncl : t ⊆ s := by
+      rw [← hins]
+      exact (Finset.subset_insert a t)
+    let incl : t → s := fun a ↦ Subtype.map (fun a ↦ a) hIncl a
+    let x' : t → A := fun i => (@Set.restrict₂ ι (fun _ ↦ A) t s hIncl x i)
+    have hInj := h t x' htcard
+    have hComp1 : x ∘ incl = x' := rfl
+    let g : adjoinPthRoots p x' →+* adjoinPthRoots p x :=
+        adjoinPthRoots_induced_map p x' incl hComp1
+    have ha : a ∈ s := by
+      rw [← hins]
+      exact Finset.mem_insert_self a t
+    let x0 : ({⟨a, ha⟩} : Set s) → adjoinPthRoots p x' :=
+        fun a => (algebraMap A (adjoinPthRoots p x') (x a))
+    let e : adjoinPthRoots p x ≃+* adjoinPthRoots p x0 := sorry -- could be difficult
+    have hComp2 : (algebraMap A (adjoinPthRoots p x)) =
+        g.comp (algebraMap A (adjoinPthRoots p x')) := by
+      sorry
+    -- have hComp3 : e.comp g = algebraMap (adjoinPthRoots p x')
+    rw [hComp2, RingHom.coe_comp]
+    apply Function.Injective.comp
+    ·
+      sorry
+    · exact hInj
 
 lemma algebraMap_inj_fin [Fintype ι] (y : A) (b : ι → MvPolynomial ι A)
     (hy : ∑ i : ι, (b i) * ((X i) ^ p - C (x i)) = C y) :
@@ -181,6 +251,7 @@ lemma algebraMap_inj : Function.Injective (algebraMap A (adjoinPthRoots p x)) :=
     · intro i hi
       simp
   · aesop
+
 
 example (B : Type) [CommRing B] (f : A →+ B) (x : ι →₀ A) (h : ι → A → A)
     : f (x.sum h) = x.sum (fun i a ↦ f (h i a)) := by
