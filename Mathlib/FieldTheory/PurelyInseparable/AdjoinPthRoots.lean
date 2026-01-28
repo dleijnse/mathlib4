@@ -160,8 +160,48 @@ example : ι → ι ⊕ κ := Sum.inl
 
 example : MvPolynomial (ι ⊕ κ) A ≃+* MvPolynomial ι (MvPolynomial κ A) := sumRingEquiv A ι κ
 
+
+example (f : ι → κ) : MvPolynomial ι A →ₐ[A] MvPolynomial κ A := by exact rename f
+example : MvPolynomial ι A →ₐ[A] MvPolynomial (ι ⊕ κ) A := rename Sum.inl
+
 lemma adjoinPthRoots_ideal_sum : adjoinPthRootsIdeal p (Sum.elim x y) =
-    adjoinPthRootsIdeal p x ⊔ adjoinPthRootsIdeal p y := by
+    Ideal.map (rename Sum.inl) (adjoinPthRootsIdeal p x) ⊔
+      Ideal.map (rename Sum.inr) (adjoinPthRootsIdeal p y) := by
+  unfold adjoinPthRootsIdeal
+  repeat rw [Ideal.map_span]
+
+  sorry
+
+example (B : Type) [CommRing B] (f : A →+* B) : MvPolynomial ι A →+* MvPolynomial ι B :=
+  MvPolynomial.map f
+
+
+example (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
+    MvPolynomial κ A →+* MvPolynomial κ ((MvPolynomial ι A) ⧸ I) := by
+  #check J.map (MvPolynomial.map (algebraMap A ((MvPolynomial ι A) ⧸ I)))
+  exact MvPolynomial.map ((Ideal.Quotient.mk I).comp (algebraMap A (MvPolynomial ι A)))
+
+def equiv1 (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
+    (MvPolynomial (ι ⊕ κ) A) ⧸ (I.map (rename Sum.inl) ⊔ J.map (rename Sum.inr)) ≃+*
+    ((MvPolynomial (ι ⊕ κ) A) ⧸ (I.map (rename Sum.inl))) ⧸
+    ((J.map (rename Sum.inr)).map (Ideal.Quotient.mk (I.map (rename Sum.inl)))) := by
+  #check (I.map (rename Sum.inl)).map (sumRingEquiv A ι κ).toRingHom
+  #check (Ideal.Quotient.mk ((I.map (rename Sum.inl)).map (sumRingEquiv A ι κ).toRingHom))
+  #check ((J.map (rename Sum.inr)).map (sumRingEquiv A ι κ).toRingHom).map (Ideal.Quotient.mk ((I.map (rename Sum.inl)).map (sumRingEquiv A ι κ).toRingHom))
+  exact (DoubleQuot.quotQuotEquivQuotSup _ _).symm
+
+def equiv2 (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
+    ((MvPolynomial (ι ⊕ κ) A) ⧸ (I.map (rename Sum.inl))) ⧸
+    ((J.map (rename Sum.inr)).map (Ideal.Quotient.mk (I.map (rename Sum.inl)))) ≃+*
+    ((MvPolynomial ι (MvPolynomial κ A)) ⧸ (I.map (rename Sum.inl)).map (sumRingEquiv A ι κ).toRingHom) ⧸
+    ((J.map (rename Sum.inr)).map (sumRingEquiv A ι κ).toRingHom).map (Ideal.Quotient.mk ((I.map (rename Sum.inl)).map (sumRingEquiv A ι κ).toRingHom))
+    := by sorry
+
+def sum_quotient_equiv (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
+    (MvPolynomial (ι ⊕ κ) A) ⧸ (I.map (rename Sum.inl) ⊔ J.map (rename Sum.inr)) ≃+*
+    (MvPolynomial κ ((MvPolynomial ι A) ⧸ I)) ⧸
+      (J.map (MvPolynomial.map ((Ideal.Quotient.mk I).comp C))) := by
+
   sorry
 
 def adjoinPthRoots_of_adjoinPthRoots_equiv :
@@ -173,6 +213,7 @@ def adjoinPthRoots_of_adjoinPthRoots_equiv :
   -- use the following:
   -- MvPolynomial.quotientEquivQuotientMvPolynomial
   -- MvPolynomial.sumAlgEquiv
+  -- third isomorphism theorem: DoubleQuot.quotQuotEquivQuotSup
 
 
   sorry
