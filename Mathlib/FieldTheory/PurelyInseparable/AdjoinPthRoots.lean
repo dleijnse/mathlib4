@@ -181,6 +181,7 @@ example (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
   #check J.map (MvPolynomial.map (algebraMap A ((MvPolynomial ι A) ⧸ I)))
   exact MvPolynomial.map ((Ideal.Quotient.mk I).comp (algebraMap A (MvPolynomial ι A)))
 
+/-
 def equiv1 (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
     (MvPolynomial (ι ⊕ κ) A) ⧸ (I.map (rename Sum.inl) ⊔ J.map (rename Sum.inr)) ≃+*
     ((MvPolynomial (ι ⊕ κ) A) ⧸ (I.map (rename Sum.inl))) ⧸
@@ -188,14 +189,60 @@ def equiv1 (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
   #check (I.map (rename Sum.inl)).map (sumRingEquiv A ι κ).toRingHom
   #check (Ideal.Quotient.mk ((I.map (rename Sum.inl)).map (sumRingEquiv A ι κ).toRingHom))
   #check ((J.map (rename Sum.inr)).map (sumRingEquiv A ι κ).toRingHom).map (Ideal.Quotient.mk ((I.map (rename Sum.inl)).map (sumRingEquiv A ι κ).toRingHom))
-  exact (DoubleQuot.quotQuotEquivQuotSup _ _).symm
+  exact (DoubleQuot.quotQuotEquivQuotSup _ _).symm-/
 
+variable (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A))
+
+#check (MvPolynomial (κ ⊕ ι) A) ⧸ (I.map (rename Sum.inr))
+
+#synth Algebra A ((MvPolynomial (κ ⊕ ι) A) ⧸ (I.map (rename Sum.inr) ⊔ J.map (rename Sum.inl)))
+
+def equiv1 (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
+    (MvPolynomial (κ ⊕ ι) A) ⧸ (I.map (rename Sum.inr) : Ideal (MvPolynomial (κ ⊕ ι) A)) ≃ₐ[A] A :=
+    -- ⊔ J.map (rename Sum.inl)) ≃ₐ[A] A := sorry
+    -- (MvPolynomial κ (MvPolynomial ι A)) ⧸
+      -- ((I.map (rename Sum.inr) ⊔ J.map (rename Sum.inl)).map (sumAlgEquiv A κ ι).toAlgHom) :=
+  -- Ideal.quotientEquiv _ _ (sumAlgEquiv A κ ι) rfl
+  sorry
+
+def equiv2 (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
+    (MvPolynomial κ (MvPolynomial ι A)) ⧸
+      ((I.map (rename Sum.inr) ⊔ J.map (rename Sum.inl)).map (sumRingEquiv A κ ι).toRingHom) ≃+*
+    (MvPolynomial κ (MvPolynomial ι A)) ⧸
+      ((I.map (rename Sum.inr)).map (sumRingEquiv A κ ι).toRingHom) ⊔
+        (J.map (rename Sum.inl)).map (sumRingEquiv A κ ι).toRingHom :=
+  Ideal.quotientEquiv _ _ (RingEquiv.refl _) (by simp [Ideal.map_sup])
+
+def equiv3 (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
+    (MvPolynomial κ (MvPolynomial ι A)) ⧸
+      ((I.map (rename Sum.inr)).map (sumRingEquiv A κ ι).toRingHom) ⊔
+        (J.map (rename Sum.inl)).map (sumRingEquiv A κ ι).toRingHom ≃+*
+    ((MvPolynomial κ (MvPolynomial ι A)) ⧸
+      ((I.map (rename Sum.inr)).map (sumRingEquiv A κ ι).toRingHom)) ⧸
+        ((J.map (rename Sum.inl)).map (sumRingEquiv A κ ι).toRingHom).map (Ideal.Quotient.mk _) :=
+  (DoubleQuot.quotQuotEquivQuotSup _ _).symm
+
+lemma ideal_equality (I : Ideal (MvPolynomial ι A)) :
+    ((I.map (rename Sum.inr)).map (sumAlgEquiv A κ ι).toAlgHom) = I.map C := by
+  rw [Ideal.map_mapₐ, MvPolynomial.sumAlgEquiv_comp_rename_inr]
+  rfl
+
+def equiv4 (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
+    ((MvPolynomial κ (MvPolynomial ι A)) ⧸
+      ((I.map (rename Sum.inr)).map (sumRingEquiv A κ ι).toRingHom)) ⧸
+        ((J.map (rename Sum.inl)).map (sumRingEquiv A κ ι).toRingHom).map (Ideal.Quotient.mk _) ≃+*
+  sorry
+  := -- use MvPolynomial.quotientEquivQuotientMvPolynomial =
+  sorry
+
+/-
 def equiv2 (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
     ((MvPolynomial (ι ⊕ κ) A) ⧸ (I.map (rename Sum.inl))) ⧸
     ((J.map (rename Sum.inr)).map (Ideal.Quotient.mk (I.map (rename Sum.inl)))) ≃+*
     ((MvPolynomial ι (MvPolynomial κ A)) ⧸ (I.map (rename Sum.inl)).map (sumRingEquiv A ι κ).toRingHom) ⧸
     ((J.map (rename Sum.inr)).map (sumRingEquiv A ι κ).toRingHom).map (Ideal.Quotient.mk ((I.map (rename Sum.inl)).map (sumRingEquiv A ι κ).toRingHom))
-    := by sorry
+    := -- Ideal.quotientEquiv
+    sorry-/
 
 def sum_quotient_equiv (I : Ideal (MvPolynomial ι A)) (J : Ideal (MvPolynomial κ A)) :
     (MvPolynomial (ι ⊕ κ) A) ⧸ (I.map (rename Sum.inl) ⊔ J.map (rename Sum.inr)) ≃+*
