@@ -146,10 +146,33 @@ lemma algebraMap_eq_C_quot_mk (a : A) :
 
 lemma algebraMap_inj_fin' [Fintype ι] : Function.Injective (algebraMap A (adjoinPthRoots p x)) := by
   induction hcard : Fintype.card ι generalizing ι
-  · sorry
+  · unfold adjoinPthRoots
+    have hBot : (adjoinPthRootsIdeal p x : Ideal _) = ⊥ := by
+      unfold adjoinPthRootsIdeal
+      rw [← Ideal.span_empty]
+      congr
+      have hι : IsEmpty ι := by
+        exact Fintype.card_eq_zero_iff.mp hcard
+      apply Set.range_eq_empty
+    -- rw [RingHom.injective_iff_ker_eq_bot]
+
+    unfold algebraMap Algebra.algebraMap
+    unfold instAlgebraAdjoinPthRoots
+    unfold Ideal.instAlgebraQuotient
+    unfold inferInstance
+    unfold Ideal.Quotient.algebra
+    simp only [algebraMap_eq]
+    -- rw [hBot]
+
+    -- rw [Ideal.Quotient.mk_bijective_iff_eq_bot]
+    -- rw [RingHom.ker_comp_of_injective]
+
+
+    sorry
   · expose_names
 
     sorry
+
 
 variable {κ : Type} (y : κ → A)
 
