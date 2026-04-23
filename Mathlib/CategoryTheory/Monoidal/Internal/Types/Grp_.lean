@@ -31,26 +31,26 @@ namespace GrpTypeEquivalenceGrp
 instance grpGroup (A : Type u) [GrpObj A] : Group A :=
   { MonTypeEquivalenceMon.monMonoid A with
     inv := ι[A]
-    inv_mul_cancel a := congr_fun (GrpObj.left_inv A) a }
+    inv_mul_cancel a := ConcreteCategory.congr_hom (GrpObj.left_inv A) a }
 
 /-- Converting a group object in `Type u` into a group. -/
 noncomputable def functor : Grp (Type u) ⥤ GrpCat.{u} where
   obj A := GrpCat.of A.X
-  map f := GrpCat.ofHom (MonTypeEquivalenceMon.functor.map f).hom
+  map f := GrpCat.ofHom (MonTypeEquivalenceMon.functor.map f.hom).hom
 
 /-- Converting a group into a group object in `Type u`. -/
 noncomputable def inverse : GrpCat.{u} ⥤ Grp (Type u) where
   obj A :=
     { MonTypeEquivalenceMon.inverse.obj ((forget₂ GrpCat MonCat).obj A) with
       grp :=
-        { inv := ((·⁻¹) : A → A)
+        { inv := TypeCat.ofHom ((·⁻¹) : A → A)
           left_inv := by
             ext x
             exact inv_mul_cancel (G := A) x
           right_inv := by
             ext x
             exact mul_inv_cancel (G := A) x } }
-  map f := MonTypeEquivalenceMon.inverse.map ((forget₂ GrpCat MonCat).map f)
+  map f := Grp.homMk' (MonTypeEquivalenceMon.inverse.map ((forget₂ GrpCat MonCat).map f))
 
 end GrpTypeEquivalenceGrp
 

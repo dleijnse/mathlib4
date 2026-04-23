@@ -24,7 +24,7 @@ that the series `∑' n : ℕ, x ^ (n + 1) / (n + 1)` converges to `(-Real.log (
 logarithm, derivative
 -/
 
-@[expose] public section
+public section
 
 
 open Filter Finset Set
@@ -71,7 +71,7 @@ theorem deriv_log (x : ℝ) : deriv log x = x⁻¹ :=
 theorem deriv_log' : deriv log = Inv.inv :=
   funext deriv_log
 
-theorem contDiffAt_log {n : WithTop ℕ∞} {x : ℝ} : ContDiffAt ℝ n log x ↔ x ≠ 0 := by
+theorem contDiffAt_log {n : ℕ∞ω} {x : ℝ} : ContDiffAt ℝ n log x ↔ x ≠ 0 := by
   refine ⟨fun h ↦ continuousAt_log_iff.1 h.continuousAt, fun hx ↦ ?_⟩
   have A y (hy : 0 < y) : ContDiffAt ℝ n log y := by
     apply expPartialHomeomorph.contDiffAt_symm_deriv (f₀' := y) hy.ne' (by simpa)
@@ -89,9 +89,9 @@ theorem contDiffAt_log {n : WithTop ℕ∞} {x : ℝ} : ContDiffAt ℝ n log x �
   · exact A x hx
 
 @[fun_prop]
-theorem contDiffOn_log {n : WithTop ℕ∞} : ContDiffOn ℝ n log {0}ᶜ := by
+theorem contDiffOn_log {n : ℕ∞ω} : ContDiffOn ℝ n log {0}ᶜ := by
   intro x hx
-  simp only [mem_compl_iff, mem_singleton_iff] at hx
+  push _ ∈ _ at hx
   exact (contDiffAt_log.2 hx).contDiffWithinAt
 
 end Real
@@ -272,7 +272,8 @@ lemma hasDerivAt_half_log_one_add_div_one_sub_sub_sum_range
           ?_).const_mul _).sub (HasDerivAt.fun_sum fun i hi ↦ (hasDerivAt_pow _ _).div_const _))
         |>.congr_deriv ?_
   · simp only [id_eq, div_ne_zero_iff, Pi.div_apply]; grind
-  have : (∑ i ∈ range n, (2*i+1) * y ^ (2*i) / (2*i+1)) = (∑ i ∈ range n, (y^2) ^ i) := by
+  have : (∑ i ∈ range n, (2 * i + 1) * y ^ (2 * i) / (2 * i + 1)) =
+      (∑ i ∈ range n, (y ^ 2) ^ i) := by
     congr with i
     simp [field, mul_comm, ← pow_mul]
   have hy₃ : y ^ 2 ≠ 1 := by simp [hy₁.ne', hy₂.ne]
@@ -307,7 +308,7 @@ lemma sum_range_sub_log_div_le {x : ℝ} (h : |x| < 1) (n : ℕ) :
       _ ≤ (x ^ 2) ^ n / (1 - x ^ 2) := by gcongr ?_ ^ n / (1 - ?_); simpa [abs_lt] using h
       _ ≤ |x| ^ (2 * n) / (1 - x ^ 2) := by simp [pow_mul]
   -- third step: apply the mean value inequality
-  have C : ‖F x - F 0‖ ≤ |x| ^ (2 * n) / (1 - x^2) * ‖x - 0‖ :=
+  have C : ‖F x - F 0‖ ≤ |x| ^ (2 * n) / (1 - x ^ 2) * ‖x - 0‖ :=
     (convex_Icc (-|x|) |x|).norm_image_sub_le_of_norm_hasDerivWithin_le
       (fun y hy ↦ (A _ (hI hy)).hasDerivWithinAt) B
       (by simp) (by simp [le_abs_self, neg_le, neg_le_abs x])
@@ -369,9 +370,9 @@ theorem hasSum_pow_div_log_of_abs_lt_one {x : ℝ} (h : |x| < 1) :
       rw [norm_eq_abs, abs_div, ← pow_abs, abs_of_nonneg this]
     _ ≤ |x| ^ (i + 1) / (0 + 1) := by
       gcongr
-      exact i.cast_nonneg
+      positivity
     _ ≤ |x| ^ i := by
-      simpa [pow_succ] using mul_le_of_le_one_right (pow_nonneg (abs_nonneg x) i) (le_of_lt h)
+      simpa [pow_succ] using mul_le_of_le_one_right (by positivity) h.le
 
 /-- Power series expansion of `log(1 + x) - log(1 - x)` for `|x| < 1`. -/
 theorem hasSum_log_sub_log_of_abs_lt_one {x : ℝ} (h : |x| < 1) :
