@@ -154,23 +154,23 @@ lemma algebraMap_inj_fin' [Fintype ι] : Function.Injective (algebraMap A (adjoi
       have hι : IsEmpty ι := by
         exact Fintype.card_eq_zero_iff.mp hcard
       apply Set.range_eq_empty
-    -- rw [RingHom.injective_iff_ker_eq_bot]
-
-    unfold algebraMap Algebra.algebraMap
-    unfold instAlgebraAdjoinPthRoots
-    unfold Ideal.instAlgebraQuotient
-    unfold inferInstance
-    unfold Ideal.Quotient.algebra
-    simp only [algebraMap_eq]
-    -- rw [hBot]
-
-    -- rw [Ideal.Quotient.mk_bijective_iff_eq_bot]
-    -- rw [RingHom.ker_comp_of_injective]
-
-
-    sorry
+    let i1 : A →+* MvPolynomial ι A := algebraMap _ _
+    let i2 : MvPolynomial ι A →+* MvPolynomial ι A ⧸ (adjoinPthRootsIdeal p x) := algebraMap _ _
+    have hComp : i2.comp i1 = algebraMap A (MvPolynomial ι A ⧸ (adjoinPthRootsIdeal p x)) := by
+      rfl
+    rw [← hComp]
+    unfold i1 i2
+    rw [RingHom.coe_comp]
+    apply Function.Injective.comp
+    · rw [Ideal.Quotient.algebraMap_eq]
+      apply Function.Bijective.injective
+      rw [Ideal.Quotient.mk_bijective_iff_eq_bot]
+      exact hBot
+    · rw [algebraMap_eq]
+      exact C_injective ι A
   · expose_names
 
+    -- Idea: reduce to inj on line 62 of this file.
     sorry
 
 
