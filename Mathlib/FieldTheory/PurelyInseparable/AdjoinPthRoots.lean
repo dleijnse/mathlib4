@@ -144,7 +144,7 @@ lemma algebraMap_eq_C_quot_mk (a : A) :
   rw [← MvPolynomial.algebraMap_eq, ← Ideal.Quotient.algebraMap_eq]
   exact IsScalarTower.algebraMap_apply A (MvPolynomial ι A) (adjoinPthRoots p x) a
 
-lemma algebraMap_inj_fin' [Fintype ι] : Function.Injective (algebraMap A (adjoinPthRoots p x)) := by
+lemma algebraMap_inj_fin' [Fintype ι] [DecidableEq ι] : Function.Injective (algebraMap A (adjoinPthRoots p x)) := by
   induction hcard : Fintype.card ι generalizing ι
   · unfold adjoinPthRoots
     have hBot : (adjoinPthRootsIdeal p x : Ideal _) = ⊥ := by
@@ -158,20 +158,50 @@ lemma algebraMap_inj_fin' [Fintype ι] : Function.Injective (algebraMap A (adjoi
     let i2 : MvPolynomial ι A →+* MvPolynomial ι A ⧸ (adjoinPthRootsIdeal p x) := algebraMap _ _
     have hComp : i2.comp i1 = algebraMap A (MvPolynomial ι A ⧸ (adjoinPthRootsIdeal p x)) := by
       rfl
-    rw [← hComp]
+    erw [← hComp]
     unfold i1 i2
-    rw [RingHom.coe_comp]
+    erw [RingHom.coe_comp]
+    simp only [Ideal.Quotient.algebraMap_eq, algebraMap_eq]
     apply Function.Injective.comp
-    · rw [Ideal.Quotient.algebraMap_eq]
-      apply Function.Bijective.injective
+    · apply Function.Bijective.injective
       rw [Ideal.Quotient.mk_bijective_iff_eq_bot]
       exact hBot
-    · rw [algebraMap_eq]
-      exact C_injective ι A
+    · exact C_injective ι A
   · expose_names
+    have hcard1 : Fintype.card ι > 0 := by
+      linarith
+    have hNonEmpty : Nonempty ι := by
+      exact Fintype.card_pos_iff.mp hcard1
+    let i : ι := Classical.choice hNonEmpty
+    let ι' := Finset.univ \ {i}
+    let inc : ι' → ι := fun a => a
+    let xres : ι' → A := fun i => x i
+    let A' := adjoinPthRoots p xres
+    let g : (MvPolynomial ι' A) ⧸ (adjoinPthRootsIdeal p xres) →ₐ[A] adjoinPthRoots p x :=
+        Ideal.quotientMapₐ (adjoinPthRootsIdeal p x) (MvPolynomial.rename inc) (by
+          rw [← Ideal.map_le_iff_le_comap]
+          apply adjoinPthRootsIdeal_map
+          unfold inc xres
+          rfl)
+    have hComp : algebraMap A (adjoinPthRoots p x) = g.toRingHom.comp (algebraMap A A') := by
 
+      sorry
+    rw [hComp]
+    rw [RingHom.coe_comp]
+    apply Function.Injective.comp
+    · unfold g
+
+      sorry
     -- Idea: reduce to inj on line 62 of this file.
-    sorry
+    · have hFin : Fintype ι' := Fintype.ofFinite ↑ι'
+      have hCard : Fintype.card ι' = n := by
+        rw [Fintype.card_coe]
+        unfold ι'
+        rw [Finset.card_univ_diff]
+        rw [hcard]
+        simp
+      unfold A'
+      exact h xres hCard
 
 
 variable {κ : Type} (y : κ → A)
